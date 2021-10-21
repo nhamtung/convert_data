@@ -74,8 +74,9 @@ void depthImageCallback(const sensor_msgs::Image::ConstPtr& msg){
       return;
     }
     cv::Mat depth_colormap;
-    cv::convertScaleAbs(cv_ptr->image, depth_colormap, 0.03);
+    cv::convertScaleAbs(cv_ptr->image, depth_colormap, 0.1);
     cv::applyColorMap(depth_colormap, depth_colormap, cv::COLORMAP_JET);
+
     cv::imshow("convert_depth_image", depth_colormap);
     cv::waitKey(10);
 }

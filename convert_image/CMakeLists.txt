@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(convert_image)
 
 find_package(catkin REQUIRED COMPONENTS
+  rospy
   roscpp
   std_msgs
   sensor_msgs

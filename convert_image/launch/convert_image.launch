@@ -2,13 +2,13 @@
     <arg name="depth_image_topic"             default="/camera/depth/image_rect_raw"/>
     <arg name="color_image_topic"             default="/camera/color/image_raw"/>
 
+    <node name="convert_image" pkg="convert_image" type="convert_image" output="screen">
+        <param name="depth_image_topic" value="$(arg depth_image_topic)" />
+        <param name="color_image_topic" value="$(arg color_image_topic)" />
+    </node>
+
     <arg name="open_rviz" default="true"/>
     <group if="$(arg open_rviz)"> 
         <node name="rviz" pkg="rviz" type="rviz" args="-d $(find convert_image)/rviz/convert_image.rviz" required="true" />
     </group>
-
-	<node name="convert_image" pkg="convert_image" type="convert_image" output="screen">
-        <param name="depth_image_topic" value="$(arg depth_image_topic)" />
-        <param name="color_image_topic" value="$(arg color_image_topic)" />
-	</node>
 </launch>
