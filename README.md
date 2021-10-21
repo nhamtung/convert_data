@@ -1,8 +1,9 @@
 # convert_data
 
 # Require
-- Ubuntu 18.04 - ROS Melodic
-- Depth camera: Intel Realsense Depth Camera D435i
+- Hardware:
+    + Ubuntu 18.04 - ROS Melodic
+    + Depth camera: Intel Realsense Depth Camera D435i
 - Install realsense ros:
     + $sudo apt-get install ros-melodic-realsense2-camera
 
