@@ -12,6 +12,7 @@
 #include <iostream>
 
 ros::Publisher depth_image_convert_pub, color_image_convert_pub;
+std::string DEPTH_IMAGE_TOPIC, COLOR_IMAGE_TOPIC;
 
 void colorImageCallback(const sensor_msgs::Image::ConstPtr& msg){
     // ROS_INFO_THROTTLE(1, "color_image_height: %d", msg->height);
@@ -80,15 +81,17 @@ void depthImageCallback(const sensor_msgs::Image::ConstPtr& msg){
 }
 
 void loadParameters(ros::NodeHandle n, std::string node_name){
-//   n.param<double>(node_name + "/v_distance_laser", V_DISTANCE_LASER, 0.25);
-//   ROS_INFO("v_distance_laser: %0.3f", V_DISTANCE_LASER);
+  n.param<std::string>(node_name + "/depth_image_topic", DEPTH_IMAGE_TOPIC, "/camera/depth/image_rect_raw");
+  ROS_INFO("depth_image_topic: %s", DEPTH_IMAGE_TOPIC.c_str());
+  n.param<std::string>(node_name + "/color_image_topic", COLOR_IMAGE_TOPIC, "/camera/color/image_raw");
+  ROS_INFO("color_image_topic: %s", COLOR_IMAGE_TOPIC.c_str());
 }
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "convert_image");
     ros::NodeHandle n;
-    
+
     cv::namedWindow("convert_color_image");
     cv::namedWindow("convert_depth_image");
 
@@ -98,8 +101,8 @@ int main(int argc, char **argv)
     depth_image_convert_pub = n.advertise<sensor_msgs::Image>("/depth_image_convert", 10);
     color_image_convert_pub = n.advertise<sensor_msgs::Image>("/color_image_convert", 10);
 
-    ros::Subscriber depth_image_sub = n.subscribe("/camera/depth/image_rect_raw", 10, depthImageCallback);
-    ros::Subscriber color_image_sub = n.subscribe("/camera/color/image_raw", 10, colorImageCallback);
+    ros::Subscriber depth_image_sub = n.subscribe(DEPTH_IMAGE_TOPIC, 10, depthImageCallback);
+    ros::Subscriber color_image_sub = n.subscribe(COLOR_IMAGE_TOPIC, 10, colorImageCallback);
     
     ros::spin();
     cv::destroyWindow("convert_color_image");
