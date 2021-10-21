@@ -1,0 +1,20 @@
+<launch>
+    <arg name="serial_no"             default=""/>
+    <arg name="json_file_path"        default=""/>
+    <arg name="camera"                default="camera"/>
+    
+    <arg name="resolution"    default="qhd" />
+    <arg name="object_prefix" default="object"/>
+    <arg name="objects_path"  default=""/>
+    <arg name="gui"           default="true"/>
+    <arg name="settings_path" default="~/.ros/find_object_2d.ini"/>
+
+    <group ns="$(arg camera)">
+        <node name="rviz" pkg="rviz" type="rviz" args="-d $(find convert_image)/rviz/convert_image.rviz" required="true" />
+    </group>
+
+	<node name="convert_image" pkg="convert_image" type="convert_image" output="screen">
+		<!-- <remap from="cloud_in" to="/camera/depth/color/points"/>
+		<remap from="scan" to="/camera/scan"/> -->
+	</node>
+</launch>
