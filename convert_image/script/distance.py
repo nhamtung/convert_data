@@ -32,7 +32,7 @@ class get_face_distance_from_camera:
   def callback(self, rgb_data, depth_data, camera_info):
     # rospy.loginfo("callback")
     try:
-      camera_info_K = np.array(camera_info.K)
+      # camera_info_K = np.array(camera_info.K)
       
       # Intrinsic camera matrix for the raw (distorted) images.
       #     [fx  0 cx]
@@ -48,7 +48,8 @@ class get_face_distance_from_camera:
     
     
       cv_rgb = self.bridge.imgmsg_to_cv2(rgb_data, "bgr8")
-      depth_image = self.bridge.imgmsg_to_cv2(depth_data, "32FC1")
+      depth_image = self.bridge.imgmsg_to_cv2(depth_data, "16UC1")
+      # depth_image = self.bridge.imgmsg_to_cv2(depth_data, "32FC1")
       depth_array = np.array(depth_image, dtype=np.float32)
       cv2.normalize(depth_array, depth_array, 0, 1, cv2.NORM_MINMAX)
       depth_8 = (depth_array * 255).round().astype(np.uint8)
@@ -60,23 +61,25 @@ class get_face_distance_from_camera:
       face_cascade = cv2.CascadeClassifier('/home/nhamtung/TungNV/realsense_ws/src/convert_data/convert_image/haarcascade/haarcascade_frontalface_default.xml')
       gray = cv2.cvtColor(cv_rgb, cv2.COLOR_BGR2GRAY)
       faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-      rgb_height, rgb_width, rgb_channels = cv_rgb.shape
+      # rgb_height, rgb_width, rgb_channels = cv_rgb.shape
+      offset = 50
       for (x,y,w,h) in faces:
-        cv2.rectangle(cv_rgb,(x,y),(x+w,y+h),(255,0,0),2)
-        cv2.rectangle(cv_depth,(x,y),(x+w,y+h),(255,0,0),2)
-        cv2.rectangle(cv_rgb,(x+30,y+30),(x+w-30,y+h-30),(0,0,255),2)
-        cv2.rectangle(cv_depth,(x+30,y+30),(x+w-30,y+h-30),(0,0,255),2)
-        roi_depth = depth_image[y+30:y+h-30, x+30:x+w-30]
+        cv2.rectangle(cv_rgb,(x,y),(x+w,y+h),(255,155,0),2)
+        cv2.rectangle(cv_depth,(x,y),(x+w,y+h),(255,155,0),2)
+        cv2.rectangle(cv_rgb,(x+offset,y+offset),(x+w-offset,y+h-offset),(0,0,255),2)
+        cv2.rectangle(cv_depth,(x+offset,y+offset),(x+w-offset,y+h-offset),(0,0,255),2)
+        roi_depth = depth_image[y+offset:y+h-offset, x+offset:x+w-offset]
         
         n = 0
         sum = 0
         for i in range(0,roi_depth.shape[0]):
             for j in range(0,roi_depth.shape[1]):
                 value = roi_depth.item(i, j)
+                # rospy.loginfo("value: %f", value)
                 if value > 0.:
                     n = n + 1
                     sum = sum + value
-        
+        # rospy.loginfo("n: %f", n)
         if n!=0:
           mean_z = sum / n
         
