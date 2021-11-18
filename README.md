@@ -4,6 +4,9 @@
 - Hardware:
     + Ubuntu 18.04 - ROS Melodic
     + Depth camera: Intel Realsense Depth Camera D435i
+- Install Intel Realsense SDK:
+    + Install: https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
+    + Test camera: realsense-viewer
 - Install realsense ros:
     + $sudo apt-get install ros-melodic-realsense2-camera
 
