@@ -22,3 +22,5 @@ include_directories(
 
 add_executable(convert_image src/convert_image.cpp)
 target_link_libraries(convert_image ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_executable(detect_object src/detect_object.cpp)
+target_link_libraries(detect_object ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})

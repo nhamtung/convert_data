@@ -1,0 +1,28 @@
+<launch>
+    <arg name="is_display_origin_color_image" value="false"/>
+    <arg name="is_display_origin_depth_image" value="false"/>
+    <arg name="is_display_resize_depth_image" value="true"/>
+    <arg name="camera_info_topic"             default="/camera/color/camera_info"/>
+    <arg name="depth_image_topic"             default="/camera/depth/image_rect_raw"/>
+    <arg name="color_image_topic"             default="/camera/color/image_raw"/>
+    <arg name="width_image_resize"            value="500"/>
+    <arg name="height_image_resize"           value="300"/>
+    <arg name="distance_object"               value="1.0"/>
+
+    <node name="detect_object" pkg="convert_image" type="detect_object" output="screen">
+        <param name="is_display_origin_color_image"     value="$(arg is_display_origin_color_image)" />
+        <param name="is_display_origin_depth_image"     value="$(arg is_display_origin_depth_image)" />
+        <param name="is_display_resize_depth_image"     value="$(arg is_display_resize_depth_image)" />
+        <param name="camera_info_topic"                 value="$(arg camera_info_topic)" />
+        <param name="depth_image_topic"                 value="$(arg depth_image_topic)" />
+        <param name="color_image_topic"                 value="$(arg color_image_topic)" />
+        <param name="width_image_resize"                value="$(arg width_image_resize)" />
+        <param name="height_image_resize"               value="$(arg height_image_resize)" />
+        <param name="distance_object"                   value="$(arg distance_object)" />
+    </node>
+
+    <arg name="open_rviz" default="true"/>
+    <group if="$(arg open_rviz)"> 
+        <node name="rviz" pkg="rviz" type="rviz" args="-d $(find convert_image)/rviz/convert_image.rviz" required="true" />
+    </group>
+</launch>
