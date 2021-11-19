@@ -16,9 +16,13 @@ from cv_bridge import CvBridge, CvBridgeError
 import math
 
 path_package = ""
+window_name = "faces + depth"
+x_mouse = 0
+y_mouse = 0
 
 class get_distance_object_from_camera:
   def __init__(self):
+    global path_package, window_name
     self.bridge = CvBridge()
     
     self.camera_info_sub = message_filters.Subscriber('/camera/color/camera_info', CameraInfo)
@@ -28,7 +32,6 @@ class get_distance_object_from_camera:
     self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub, self.camera_info_sub], queue_size=10, slop=0.5)
     self.ts.registerCallback(self.callback)
 
-    global path_package
     rospack = rospkg.RosPack()
     path_package = rospack.get_path('convert_image')
     rospy.loginfo("path to package convert_image: " + path_package)
@@ -37,6 +40,7 @@ class get_distance_object_from_camera:
 
   def callback(self, rgb_data, depth_data, camera_info):
     global path_package
+    global x_mouse, y_mouse
     try:
       m_cx, m_cy, inv_fx, inv_fy = self.cameraInfo(camera_info)
     
@@ -56,7 +60,8 @@ class get_distance_object_from_camera:
       faces = face_cascade.detectMultiScale(gray, 1.3, 5)
       # rgb_height, rgb_width, rgb_channels = cv_rgb.shape
 
-      # rospy.loginfo("mouse.position(): " + pyautogui.position())
+      cv2.setMouseCallback(window_name, self.mouseEvent)
+      cv2.circle(cv_rgb, (x_mouse, y_mouse), 3, (0, 0, 255), -1)
 
       offset = 50
       for (x,y,w,h) in faces:
@@ -96,7 +101,6 @@ class get_distance_object_from_camera:
           dist_str = "dist:" + str(format(dist, '.2f')) + "m"
         
           cv2.putText(cv_rgb, dist_str, (x+w, y+60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 1, cv2.LINE_AA)
-            
     except CvBridgeError as e:
       print(e)
       
@@ -106,7 +110,7 @@ class get_distance_object_from_camera:
     try:
       faces_message = self.bridge.cv2_to_imgmsg(rgbd, "bgr8")
       self.pub.publish(faces_message)
-      self.show(faces_message)
+      self.showImage(faces_message)
     except CvBridgeError as e:
       print(e)
       
@@ -127,18 +131,34 @@ class get_distance_object_from_camera:
     except:
       print("Something went wrong in camera_info")
 
-  def show(self, image_data):
+  def showImage(self, image_data):
+    global window_name
     try:
       cv_image = self.bridge.imgmsg_to_cv2(image_data, "bgr8")
-      cv2.imshow("faces + depth", cv_image)
+      cv2.imshow(window_name, cv_image)
       cv2.waitKey(30)
     except:
       print("Something went wrong when show image")
+
+  def mouseEvent(self, event, x, y, flags, param):
+    global x_mouse, y_mouse
+    # rospy.loginfo("mouseEvent")
+    try:
+      if event == cv2.EVENT_MOUSEMOVE:
+        x_mouse, y_mouse = x, y
+        # print(x_mouse, y_mouse)
+    except:
+      print("Something went wrong when detect mouse event")
+
+  def resizeImage(self, depth_array, width_image_resize, height_image_resize, origin_x, origin_y):
+
+    return 
 
 def main(args):
   rospy.init_node('detect_object', anonymous=True)
   rospy.loginfo("get_distance_object_from_camera")
   dist_obj = get_distance_object_from_camera()
+  cv2.destroyAllWindows()
   try:
     rospy.spin()
   except KeyboardInterrupt:
