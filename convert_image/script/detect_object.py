@@ -5,6 +5,8 @@ import roslib
 import sys
 import rospy
 import rospkg
+import pyautogui
+import argparse
 import cv2
 import numpy as np
 import message_filters
@@ -13,8 +15,9 @@ from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
 import math
 
+path_package = ""
+
 class get_distance_object_from_camera:
-  path_package = ""
   def __init__(self):
     self.bridge = CvBridge()
     
@@ -40,6 +43,7 @@ class get_distance_object_from_camera:
       cv_rgb = self.bridge.imgmsg_to_cv2(rgb_data, "bgr8")
       depth_image = self.bridge.imgmsg_to_cv2(depth_data, "16UC1")
       depth_array = np.array(depth_image, dtype=np.float32)
+
       cv2.normalize(depth_array, depth_array, 0, 1, cv2.NORM_MINMAX)
       depth_8 = (depth_array * 255).round().astype(np.uint8)
       cv_depth = np.zeros_like(cv_rgb)
@@ -51,6 +55,9 @@ class get_distance_object_from_camera:
       gray = cv2.cvtColor(cv_rgb, cv2.COLOR_BGR2GRAY)
       faces = face_cascade.detectMultiScale(gray, 1.3, 5)
       # rgb_height, rgb_width, rgb_channels = cv_rgb.shape
+
+      # rospy.loginfo("mouse.position(): " + pyautogui.position())
+
       offset = 50
       for (x,y,w,h) in faces:
         cv2.rectangle(cv_rgb,(x,y),(x+w,y+h),(255,155,0),2)
@@ -99,6 +106,7 @@ class get_distance_object_from_camera:
     try:
       faces_message = self.bridge.cv2_to_imgmsg(rgbd, "bgr8")
       self.pub.publish(faces_message)
+      self.show(faces_message)
     except CvBridgeError as e:
       print(e)
       
@@ -118,6 +126,14 @@ class get_distance_object_from_camera:
       return m_cx, m_cy, inv_fx, inv_fy
     except:
       print("Something went wrong in camera_info")
+
+  def show(self, image_data):
+    try:
+      cv_image = self.bridge.imgmsg_to_cv2(image_data, "bgr8")
+      cv2.imshow("faces + depth", cv_image)
+      cv2.waitKey(30)
+    except:
+      print("Something went wrong when show image")
 
 def main(args):
   rospy.init_node('detect_object', anonymous=True)

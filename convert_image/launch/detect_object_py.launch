@@ -20,7 +20,7 @@
         <param name="height_image_resize"               value="$(arg height_image_resize)" />
         <param name="distance_object"                   value="$(arg distance_object)" />
     </node>
-    <node name="view" pkg="convert_image" type="view.py" output="screen"></node>
+    <!-- <node name="view" pkg="convert_image" type="view.py" output="screen"></node> -->
 
 
     <arg name="open_rviz" default="true"/>
