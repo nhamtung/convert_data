@@ -5,6 +5,7 @@ import roslib
 # roslib.load_manifest('unibas_face_distance_calculator')
 import sys
 import rospy
+import rospkg
 import cv2
 import numpy as np
 import message_filters
@@ -14,7 +15,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import math
 
 class get_face_distance_from_camera:
-
+  path_package = ""
   def __init__(self):     
      
     self.bridge = CvBridge()
@@ -26,11 +27,16 @@ class get_face_distance_from_camera:
         
     self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub, self.camera_info_sub], queue_size=10, slop=0.5)
     self.ts.registerCallback(self.callback)
+
+    global path_package
+    rospack = rospkg.RosPack()
+    path_package = rospack.get_path('convert_image')
+    rospy.loginfo("path to package convert_image: " + path_package)
         
     self.pub = rospy.Publisher('/unibas_face_distance_calculator/faces', Image, queue_size=1)	
 
   def callback(self, rgb_data, depth_data, camera_info):
-    # rospy.loginfo("callback")
+    global path_package
     try:
       # camera_info_K = np.array(camera_info.K)
       
@@ -58,7 +64,7 @@ class get_face_distance_from_camera:
       cv_depth[:,:,1] = depth_8
       cv_depth[:,:,2] = depth_8
       
-      face_cascade = cv2.CascadeClassifier('/home/nhamtung/TungNV/realsense_ws/src/convert_data/convert_image/haarcascade/haarcascade_frontalface_default.xml')
+      face_cascade = cv2.CascadeClassifier(path_package + '/haarcascade/haarcascade_frontalface_default.xml')
       gray = cv2.cvtColor(cv_rgb, cv2.COLOR_BGR2GRAY)
       faces = face_cascade.detectMultiScale(gray, 1.3, 5)
       # rgb_height, rgb_width, rgb_channels = cv_rgb.shape
