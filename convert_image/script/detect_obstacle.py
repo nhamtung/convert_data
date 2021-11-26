@@ -21,13 +21,16 @@ OFFSET = 4
 TYPE_DEPTH_IMAGE = "16UC1"
 TYPE_COLOR_IMAGE = "bgr8"
 
+use_detect = True
 path_package = ""
 color_image_name = "color_image"
 depth_image_name = "depth_image"
 x_mouse = 0
 y_mouse = 0
+x_obstacle = 0
+y_obstacle = 0
 width_image_resize = 640
-height_image_resize = 480
+height_image_resize = 300
 cameraInfo = None
 depth_image_resize = None
 
@@ -51,15 +54,16 @@ class get_distance_object_from_camera:
     rospy.loginfo("path to package convert_image: " + path_package)
     
     t = threading.Thread(target=self.detectObstacle)
+    t.daemon = True
     t.start()
-    t.join()
+    # t.join()
 
   def cameraCallback(self, rgb_data, depth_data, camera_info):
     global TYPE_COLOR_IMAGE, TYPE_DEPTH_IMAGE, OFFSET
     global cameraInfo
     global depth_image_resize
     global path_package, color_image_name, depth_image_name
-    global x_mouse, y_mouse, width_image_resize, height_image_resize
+    global x_mouse, y_mouse, x_obstacle, y_obstacle, width_image_resize, height_image_resize
     try:
       if cameraInfo is None:
         cameraInfo = camera_info
@@ -71,6 +75,7 @@ class get_distance_object_from_camera:
       cv2.setMouseCallback(depth_image_name, self.mouseEvent)
       cv2.circle(depth_image_resize, (x_mouse, y_mouse), 3, (0, 0, 255), -1)
       cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image_resize/2+x_mouse, depth_image.shape[0]/2-height_image_resize/2+y_mouse), 3, (0, 0, 255), -1)
+      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image_resize/2+x_obstacle, depth_image.shape[0]/2-height_image_resize/2+y_obstacle), 3, (0, 0, 255), -1)
   
       self.mouseDistance(cv_rgb, depth_image, OFFSET, x_mouse, y_mouse)
       # self.detectObstacle(camera_info, cv_rgb, depth_image, depth_image_resize, offset, width_image_resize, height_image_resize)
@@ -114,12 +119,12 @@ class get_distance_object_from_camera:
       print("Something went wrong when show image")
 
   def mouseEvent(self, event, x, y, flags, param):
-    global x_mouse, y_mouse
-    # rospy.loginfo("mouseEvent")
+    global x_mouse, y_mouse, use_detect
     try:
       if event == cv2.EVENT_MOUSEMOVE:
         x_mouse, y_mouse = x, y
-        # print(x_mouse, y_mouse)
+      # elif event == cv2.EVENT_LBUTTONDOWN:
+      #   use_detect = False
     except:
       print("Something went wrong when detect mouse event")
 
@@ -174,23 +179,26 @@ class get_distance_object_from_camera:
       cv2.putText(cv_rgb, dist_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
 
   def detectObstacle(self):
-    global OFFSET
+    global OFFSET, use_detect, x_obstacle, y_obstacle
     global depth_image_resize
     global width_image_resize, height_image_resize
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
       num = 0
       prior_time = time.time()
-      for i in range(0, width_image_resize):
-        for j in range(0, height_image_resize):
-          if i%OFFSET is 0 and j%OFFSET is 0:
-            if not depth_image_resize is None:
-              roi_depth = depth_image_resize[j:j+OFFSET, i:i+OFFSET]
-              dist = self.getDistance(roi_depth)
-              if dist>0.2 and dist<1:
-                num = num+1
-      if num > 3:
-        rospy.loginfo("Obstacle")
+      if use_detect:
+        for i in range(0, width_image_resize):
+          for j in range(0, height_image_resize):
+            if i%OFFSET is 0 and j%OFFSET is 0:
+              if not depth_image_resize is None:
+                roi_depth = depth_image_resize[j:j+OFFSET, i:i+OFFSET]
+                dist = self.getDistance(roi_depth)
+                if dist>0.1 and dist<1:
+                  num = num+1
+                  x_obstacle = i
+                  y_obstacle = j
+        if num > 3:
+          rospy.loginfo("Obstacle")
       rospy.loginfo("Time to check: %f", time.time()-prior_time) 
       rate.sleep() 
 
