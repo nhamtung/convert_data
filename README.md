@@ -15,11 +15,13 @@
     + $ls /dev/video*
     + expect: /dev/video0  /dev/video1  /dev/video2
 
-- Run convert_image program:
-    + $roslaunch realsense2_camera rs_camera.launch
-    + $roslaunch convert_image convert_image.launch
+- Run depth camera: $roslaunch realsense2_camera rs_camera.launch
+
+- Run convert_image program: $roslaunch convert_image convert_image.launch
 
 - Run face distance program:
     + https://github.com/dbloisi/unibas_face_distance_calculator
-    + $roslaunch realsense2_camera rs_camera.launch
     + $roslaunch convert_image face_distance.launch
+
+- Run detect_obstacle:
+    + $roslaunch convert_image detect_obstacle_py.launch

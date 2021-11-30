@@ -5,6 +5,7 @@ import roslib
 import time
 import sys
 import threading
+import multiprocessing
 import rospy
 import rospkg
 import pyautogui
@@ -22,17 +23,16 @@ TYPE_DEPTH_IMAGE = "16UC1"
 TYPE_COLOR_IMAGE = "bgr8"
 
 use_detect = True
+use_rotate = True
 path_package = ""
 color_image_name = "color_image"
 depth_image_name = "depth_image"
 x_mouse = 0
 y_mouse = 0
-x_obstacle = 0
-y_obstacle = 0
 width_image_resize = 640
 height_image_resize = 480
 cameraInfo = None
-depth_image_resize = None
+depth_image_rotate_resize = None
 
 
 class get_distance_object_from_camera:
@@ -40,7 +40,8 @@ class get_distance_object_from_camera:
     global path_package
     self.bridge = CvBridge()
     
-    self.pub = rospy.Publisher('/images', Image, queue_size=1)	
+    self.depth_image_message_pub = rospy.Publisher('/depth_image_message', Image, queue_size=1)	
+    self.color_image_message_pub = rospy.Publisher('/color_image_message', Image, queue_size=1)	
 
     self.camera_info_sub = message_filters.Subscriber('/camera/color/camera_info', CameraInfo)
     self.image_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
@@ -53,38 +54,65 @@ class get_distance_object_from_camera:
     path_package = rospack.get_path('convert_image')
     rospy.loginfo("path to package convert_image: " + path_package)
     
-    lock = threading.Lock()
-    t = threading.Thread(target=self.detectObstacle, args=(lock,))
-    t.start()
+    # t = multiprocessing.Process(target=self.detectObstacleThread)
+    # t = threading.Thread(target=self.detectObstacleThread)
+    # t.start()
     # t.join()  # wait until threads finish their job
 
   def cameraCallback(self, rgb_data, depth_data, camera_info):
     global TYPE_COLOR_IMAGE, TYPE_DEPTH_IMAGE, OFFSET
-    global cameraInfo
-    global depth_image_resize
+    global cameraInfo, use_rotate, use_detect
+    global depth_image_rotate_resize
     global path_package, color_image_name, depth_image_name
     global x_mouse, y_mouse, x_obstacle, y_obstacle, width_image_resize, height_image_resize
     try:
       if cameraInfo is None:
         cameraInfo = camera_info
 
-      cv_rgb = self.bridge.imgmsg_to_cv2(rgb_data, TYPE_COLOR_IMAGE)
       depth_image = self.bridge.imgmsg_to_cv2(depth_data, TYPE_DEPTH_IMAGE)
-      depth_image_resize = self.resize(depth_image, width_image_resize, height_image_resize, depth_image.shape[1]/2, depth_image.shape[0]/2)
+      cv_rgb = self.bridge.imgmsg_to_cv2(rgb_data, TYPE_COLOR_IMAGE)
+
+      width_image = 0
+      height_image = 0
+      origin_width = 0
+      origin_height = 0
+      if use_rotate:
+        cv_rgb = cv2.rotate(cv_rgb, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        depth_image_rotate = cv2.rotate(depth_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        width_image = height_image_resize
+        height_image = width_image_resize
+        origin_width = depth_image.shape[0]/2
+        origin_height = depth_image.shape[1]/2
+      else:
+        depth_image_rotate = depth_image
+        width_image = width_image_resize
+        height_image = height_image_resize
+        origin_width = depth_image.shape[1]/2
+        origin_height = depth_image.shape[0]/2
+      # rospy.loginfo("width_image = %d", width_image)
+      # rospy.loginfo("height_image = %d", height_image)
+
+      depth_image_rotate_resize = self.resize(depth_image_rotate, width_image, height_image, origin_width, origin_height)
 
       cv2.setMouseCallback(depth_image_name, self.mouseEvent)
-      cv2.circle(depth_image_resize, (x_mouse, y_mouse), 3, (0, 0, 255), -1)
-      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image_resize/2+x_mouse, depth_image.shape[0]/2-height_image_resize/2+y_mouse), 3, (0, 0, 255), -1)
-      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image_resize/2+x_obstacle, depth_image.shape[0]/2-height_image_resize/2+y_obstacle), 3, (0, 0, 255), -1)
+      cv2.circle(depth_image_rotate_resize, (x_mouse, y_mouse), 3, (0, 0, 255), -1)
+      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image/2+x_mouse, depth_image.shape[0]/2-height_image/2+y_mouse), 3, (0, 0, 255), -1)
   
+      prior_time = time.time()
+      x_obstacle, y_obstacle = self.detectObstacle(use_detect, depth_image_rotate_resize, width_image, height_image)
+      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image/2+x_obstacle, depth_image.shape[0]/2-height_image/2+y_obstacle), 3, (255, 0, 255), -1)
+      rospy.loginfo("Time to check: %f", time.time()-prior_time) 
+
       self.mouseDistance(cv_rgb, depth_image, OFFSET, x_mouse, y_mouse)
     except CvBridgeError as e:
       print(e)
+
       
     try:
-      depth_image_message = self.bridge.cv2_to_imgmsg(depth_image_resize, TYPE_DEPTH_IMAGE)
+      depth_image_message = self.bridge.cv2_to_imgmsg(depth_image_rotate_resize, TYPE_DEPTH_IMAGE)
       color_image_message = self.bridge.cv2_to_imgmsg(cv_rgb, TYPE_COLOR_IMAGE)
-      self.pub.publish(depth_image_message)
+      self.depth_image_message_pub.publish(depth_image_message)
+      self.color_image_message_pub.publish(color_image_message)
       self.showRosImage(color_image_name, color_image_message, TYPE_COLOR_IMAGE)
       self.showRosImage(depth_image_name, depth_image_message, TYPE_DEPTH_IMAGE)
     except CvBridgeError as e:
@@ -172,47 +200,52 @@ class get_distance_object_from_camera:
     return point_x, point_y, point_z, dist
         
   def mouseDistance(self, cv_rgb, depth_image, offset, x_mouse, y_mouse):
-    global depth_image_resize
-    roi_depth = depth_image_resize[y_mouse:y_mouse+offset, x_mouse:x_mouse+offset]
+    global depth_image_rotate_resize
+    roi_depth = depth_image_rotate_resize[y_mouse:y_mouse+offset, x_mouse:x_mouse+offset]
     point_x, point_y, point_z, dist = self.getDistance(roi_depth)
     if not dist is None:
       point_x_str = str(format(point_x, '.2f')) + "m"
       point_y_str = str(format(point_y, '.2f')) + "m"
       point_z_str = str(format(point_z, '.2f')) + "m"
       dist_str = str(format(dist, '.2f')) + "m"
-      cv2.putText(depth_image_resize, dist_str, (x_mouse+5, y_mouse), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+      cv2.putText(depth_image_rotate_resize, dist_str, (x_mouse+5, y_mouse), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
       cv2.putText(cv_rgb, point_x_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
       cv2.putText(cv_rgb, point_y_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse+30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
       cv2.putText(cv_rgb, point_z_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse+60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
       cv2.putText(cv_rgb, dist_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse+90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
 
-  def detectObstacle(self, lock):
+  def detectObstacleThread(self):
     global OFFSET, use_detect, x_obstacle, y_obstacle
-    global depth_image_resize
+    global depth_image_rotate_resize
     global width_image_resize, height_image_resize
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
-      lock.acquire()
-      num = 0
-      prior_time = time.time()
-      if use_detect:
-        for i in range(0, width_image_resize):
-          for j in range(0, height_image_resize):
-            if j>height_image_resize/2+25:
-              break
-            if i%OFFSET is 0 and j%OFFSET is 0:
-              if not depth_image_resize is None:
-                roi_depth = depth_image_resize[j:j+OFFSET, i:i+OFFSET]
-                point_x, point_y, point_z, dist = self.getDistance(roi_depth)
-                if dist>0.1 and dist<1:
-                  num = num+1
-                  x_obstacle = i
-                  y_obstacle = j
-        if num > 3:
-          rospy.loginfo("Obstacle")
-      rospy.loginfo("Time to check: %f", time.time()-prior_time) 
+      # prior_time = time.time()
+      # self.detectObstacle(use_detect, depth_image_rotate_resize, width_image_resize, height_image_resize)
+      # rospy.loginfo("Time to check: %f", time.time()-prior_time) 
       rate.sleep() 
-      lock.release()
+  def detectObstacle(self, use_detect, depth_image, width_image, height_image):
+    x_obstacle = 0 
+    y_obstacle = 0
+    if use_detect:
+      num = 0
+      for i in range(0, width_image):
+        for j in range(0, height_image):
+          if j>height_image/2+25:
+            break
+          if i%OFFSET is 0 and j%OFFSET is 0:
+            if not depth_image is None:
+              roi_depth = depth_image[j:j+OFFSET, i:i+OFFSET]
+              point_x, point_y, point_z, dist = self.getDistance(roi_depth)
+              if dist>0.1 and dist<1:
+                num = num+1
+                x_obstacle = i
+                y_obstacle = j
+            else:
+              rospy.loginfo("depth_image_rotate_resize is None")
+      if num > 3:
+        rospy.loginfo("Obstacle")
+    return x_obstacle, y_obstacle
 
 def main(args):
   rospy.init_node('detect_object', anonymous=True)
