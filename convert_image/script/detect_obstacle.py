@@ -33,8 +33,8 @@ width_image_resize = 640
 height_image_resize = 480
 cameraInfo = None
 depth_image_rotate_resize = None
-field_detect = 1.5
-field_warning = 1.0
+field_detect = 1.7
+field_warning = 1.2
 field_dangerous = 0.7
 
 
