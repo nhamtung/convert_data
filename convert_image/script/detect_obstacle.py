@@ -33,6 +33,9 @@ width_image_resize = 640
 height_image_resize = 480
 cameraInfo = None
 depth_image_rotate_resize = None
+field_detect = 1.5
+field_warning = 1.0
+field_dangerous = 0.7
 
 
 class get_distance_object_from_camera:
@@ -225,10 +228,13 @@ class get_distance_object_from_camera:
       # rospy.loginfo("Time to check: %f", time.time()-prior_time) 
       rate.sleep() 
   def detectObstacle(self, use_detect, depth_image, width_image, height_image):
+    global field_detect, field_warning, field_dangerous
     x_obstacle = 0 
     y_obstacle = 0
     if use_detect:
-      num = 0
+      num_detect = 0
+      num_warning = 0
+      num_dangerous = 0
       for i in range(0, width_image):
         for j in range(0, height_image):
           if j>height_image/2+25:
@@ -237,14 +243,21 @@ class get_distance_object_from_camera:
             if not depth_image is None:
               roi_depth = depth_image[j:j+OFFSET, i:i+OFFSET]
               point_x, point_y, point_z, dist = self.getDistance(roi_depth)
-              if dist>0.1 and dist<1:
-                num = num+1
-                x_obstacle = i
-                y_obstacle = j
+              if dist>field_warning and dist<field_detect:
+                num_detect = num_detect+1
+              elif dist>field_dangerous and dist<field_warning:
+                num_warning = num_warning+1
+              elif dist>0.1 and dist<field_dangerous:
+                num_dangerous = num_dangerous+1
             else:
               rospy.loginfo("depth_image_rotate_resize is None")
-      if num > 3:
-        rospy.loginfo("Obstacle")
+      print(num_detect, num_warning, num_dangerous)
+      if num_dangerous>50:
+        rospy.logerr("Dangerous Obstacle")
+      elif num_warning>30:
+        rospy.logwarn("Warning Obstacle")
+      elif num_detect>10:
+        rospy.loginfo("Detect Obstacle")
     return x_obstacle, y_obstacle
 
 def main(args):

@@ -7,6 +7,9 @@
 - Install Intel Realsense SDK:
     + Install: https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
     + Test camera: realsense-viewer
+- Install python:
+    + $sudo apt install python-pip
+    + $pip install pyautogui
 - Install realsense ros:
     + $sudo apt-get install ros-melodic-realsense2-camera
 
