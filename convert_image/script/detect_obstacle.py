@@ -251,13 +251,13 @@ class get_distance_object_from_camera:
                 num_dangerous = num_dangerous+1
             else:
               rospy.loginfo("depth_image_rotate_resize is None")
-      print(num_detect, num_warning, num_dangerous)
+      # print(num_dangerous, num_warning, num_detect)
       if num_dangerous>50:
-        rospy.logerr("Dangerous Obstacle")
+        rospy.logerr("Dangerous Obstacle: %d", num_dangerous)
       elif num_warning>30:
-        rospy.logwarn("Warning Obstacle")
+        rospy.logwarn("Warning Obstacle: %d", num_warning)
       elif num_detect>10:
-        rospy.loginfo("Detect Obstacle")
+        rospy.loginfo("Detect Obstacle: %d", num_detect)
     return x_obstacle, y_obstacle
 
 def main(args):
