@@ -10,8 +10,13 @@
 - Install python:
     + $sudo apt install python-pip
     + $pip install pyautogui
-- Install realsense ros:
-    + $sudo apt-get install ros-melodic-realsense2-camera
+- Install ddynamic-reconfigure:
+    + $sudo apt-get update
+    + $sudo apt-get install ros-melodic-ddynamic-reconfigure
+- Update git submodule:
+    + Direct to folder: /convert_data
+    + $git submodule init
+    + $git submodule update
 
 # RUN
 - Check camera is connected: 

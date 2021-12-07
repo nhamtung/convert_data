@@ -22,33 +22,43 @@ OFFSET = 4
 TYPE_DEPTH_IMAGE = "16UC1"
 TYPE_COLOR_IMAGE = "bgr8"
 
-use_detect = True
-use_rotate = True
 path_package = ""
-color_image_name = "color_image"
-depth_image_name = "depth_image"
 x_mouse = 0
 y_mouse = 0
-width_image_resize = 640
-height_image_resize = 480
 cameraInfo = None
 depth_image_rotate_resize = None
-field_detect = 1.7
-field_warning = 1.2
-field_dangerous = 0.7
 
+use_detect = True
+use_rotate = True
+is_display_origin_color_image = False
+is_display_origin_depth_image = False
+is_display_resize_depth_image = True
+camera = "/camera"
+topic_camera_info_sub = "/color/camera_info"
+topic_color_image_sub = "/color/image_raw"
+topic_depth_image_sub = "/depth/image_rect_raw"
+distance_field_detect = 1.7
+distance_field_warning = 1.2
+distance_field_dangerous = 0.7
+width_image_resize = 640
+height_image_resize = 480
+
+color_image_name = camera + "/color_image"
+depth_image_name = camera + "/depth_image"
+topic_color_image_pub = "/color_image_message"
+topic_depth_image_pub = "/depth_image_message"
 
 class get_distance_object_from_camera:
   def __init__(self):
-    global path_package
+    global path_package, camera, topic_camera_info_sub, topic_camera_info_sub, topic_depth_image_sub, topic_color_image_pub, topic_depth_image_pub
     self.bridge = CvBridge()
-    
-    self.depth_image_message_pub = rospy.Publisher('/depth_image_message', Image, queue_size=1)	
-    self.color_image_message_pub = rospy.Publisher('/color_image_message', Image, queue_size=1)	
 
-    self.camera_info_sub = message_filters.Subscriber('/camera/color/camera_info', CameraInfo)
-    self.image_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
-    self.depth_sub = message_filters.Subscriber("/camera/depth/image_rect_raw", Image)
+    self.depth_image_message_pub = rospy.Publisher(camera + topic_color_image_pub , Image, queue_size=1)	
+    self.color_image_message_pub = rospy.Publisher(camera + topic_depth_image_pub , Image, queue_size=1)	
+
+    self.camera_info_sub = message_filters.Subscriber(camera + topic_camera_info_sub , CameraInfo)
+    self.image_sub = message_filters.Subscriber(camera + topic_camera_info_sub , Image)
+    self.depth_sub = message_filters.Subscriber(camera + topic_depth_image_sub , Image)
         
     self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub, self.camera_info_sub], queue_size=10, slop=0.5)
     self.ts.registerCallback(self.cameraCallback)
