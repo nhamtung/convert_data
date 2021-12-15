@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 import message_filters
 from std_msgs.msg import String
-from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from cv_bridge import CvBridge, CvBridgeError
 import math
 
@@ -63,7 +63,7 @@ class get_distance_object_from_camera:
     rospy.loginfo("Subscriber the topic: " + camera + topic_camera_info_sub)
     self.image_sub = message_filters.Subscriber(camera + topic_color_image_sub , Image)
     rospy.loginfo("Subscriber the topic: " + camera + topic_color_image_sub)
-    self.depth_sub = message_filters.Subscriber(camera + topic_depth_image_sub , Image)
+    self.depth_sub = message_filters.Subscriber(camera + topic_depth_image_sub , PointCloud2)
     rospy.loginfo("Subscriber the topic: " + camera + topic_depth_image_sub)
         
     self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub, self.camera_info_sub], queue_size=10, slop=0.5)
@@ -158,10 +158,10 @@ class get_distance_object_from_camera:
 
   def getParam(self):
     global path_package, camera, topic_camera_info_sub, topic_color_image_sub, topic_depth_image_sub, topic_color_image_pub, topic_depth_image_pub
-    camera = "/camera"
-    topic_camera_info_sub = "/color/camera_info"
-    topic_color_image_sub = "/color/image_raw"
-    topic_depth_image_sub = "/depth/image_rect_raw"
+    camera = ""
+    topic_camera_info_sub = "/sick_visionary_t_mini/camera_info"
+    topic_color_image_sub = "/sick_visionary_t_mini/intensity"
+    topic_depth_image_sub = "/sick_visionary_t_mini/points"
 
   def showRosImage(self, window_name, image_ros_data, type_image):
     try:
