@@ -1,0 +1,33 @@
+= sick_visionary_ros
+
+
+== SICK Visionary ROS drivers
+
+This repository contains the updated version of the Visionary-T driver, which was previously published as link:++http://wiki.ros.org/sick_visionary_t_driver++[ROS package].
+
+For questions about the ROS driver contact: TechSupport0905@sick.de
+
+=== Getting started
+
+First you need a working ROS installation. (see link:++http://wiki.ros.org/ROS/Installation++[ROS wiki]) footnote:[testing was done against ROS noetic 64bit]
+
+The driver connects to the default IP and API-port of the device. To adapt this for your needs just edit the launch file for the specific variant.
+
+After cloning this repository into the src folder of your ROS workspace run these additional git commands to have the correct submodules in place:
+
+* `git submodule init`
+* `git submodule update`
+
+TIP: If you've received a distribution archive just extract it into the src folder of your ROS workspace.
+
+Ensure the ROS environment is active. footnote:[source /opt/ros/<version>/setup.bash]
+
+Now you are able to compile the drivers using `catkin_make` from the top level folder of your ROS environment.
+
+To test just use `catkin_make install` to do a local install and then update your ROS environment by sourcing install/setup.bash in your workspace. After that the driver can be launched:
+
+* `roslaunch sick_visionary sick_visionary-t.launch` footnote:[please use the device specific launch file to start the correct driver variant]
+
+Visualize the results in the RViz (3D visualization tool for ROS):
+
+* `rosrun rviz rviz`
