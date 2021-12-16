@@ -13,6 +13,8 @@
 - Install ddynamic-reconfigure:
     + $sudo apt-get update
     + $sudo apt-get install ros-melodic-ddynamic-reconfigure
+- Install numpy:
+    + $sudo apt install ros-melodic-ros-numpy
 - Update git submodule:
     + Direct to folder: /convert_data
     + $git submodule init

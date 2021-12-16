@@ -132,8 +132,8 @@ class get_distance_object_from_camera:
       color_image_message = self.bridge.cv2_to_imgmsg(cv_rgb, TYPE_COLOR_IMAGE)
       self.depth_image_message_pub.publish(depth_image_message)
       self.color_image_message_pub.publish(color_image_message)
-      self.showRosImage(color_image_name, color_image_message, TYPE_COLOR_IMAGE)
-      self.showRosImage(depth_image_name, depth_image_message, TYPE_DEPTH_IMAGE)
+      self.showRosImage(color_image_name, cv_rgb, TYPE_COLOR_IMAGE)
+      self.showRosImage(depth_image_name, depth_image_rotate_resize, TYPE_DEPTH_IMAGE)
     except CvBridgeError as e:
       print(e)
       
@@ -163,9 +163,9 @@ class get_distance_object_from_camera:
     topic_color_image_sub = "/color/image_raw"
     topic_depth_image_sub = "/depth/image_rect_raw"
 
-  def showRosImage(self, window_name, image_ros_data, type_image):
+  def showImage(self, window_name, cv_image, type_image):
     try:
-      cv_image = self.bridge.imgmsg_to_cv2(image_ros_data, type_image)
+      # cv_image = self.bridge.imgmsg_to_cv2(image_ros_data, type_image)
       cv2.imshow(window_name, cv_image)
       cv2.waitKey(30)
     except:

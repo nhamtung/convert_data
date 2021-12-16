@@ -17,6 +17,12 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from cv_bridge import CvBridge, CvBridgeError
 import math
+import pcl
+import ros_numpy
+import ctypes
+import struct
+import sensor_msgs
+import sensor_msgs.point_cloud2 as pc2
 
 OFFSET = 4
 TYPE_DEPTH_IMAGE = "16UC1"
@@ -40,8 +46,8 @@ topic_depth_image_sub = "/depth/image_rect_raw"
 distance_field_detect = 1.7
 distance_field_warning = 1.2
 distance_field_dangerous = 0.7
-width_image_resize = 640
-height_image_resize = 480
+width_image_resize = 512
+height_image_resize = 424
 
 color_image_name = camera + "/color_image"
 depth_image_name = camera + "/depth_image"
@@ -69,6 +75,8 @@ class get_distance_object_from_camera:
     self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub, self.camera_info_sub], queue_size=10, slop=0.5)
     self.ts.registerCallback(self.cameraCallback)
 
+    rospy.Subscriber(camera + topic_depth_image_sub , PointCloud2, self.PointCloud2Callback)
+
     rospack = rospkg.RosPack()
     path_package = rospack.get_path('convert_image')
     rospy.loginfo("path to package convert_image: " + path_package)
@@ -78,65 +86,110 @@ class get_distance_object_from_camera:
     # t.start()
     # t.join()  # wait until threads finish their job
 
+  def PointCloud2Callback(self, pointcloud2):
+    self.displayPointCloudInfo(pointcloud2, True, False)
+    # pc = ros_numpy.numpify(pointcloud2)
+
+
   def cameraCallback(self, rgb_data, depth_data, camera_info):
     global TYPE_COLOR_IMAGE, TYPE_DEPTH_IMAGE, OFFSET
     global cameraInfo, use_rotate, use_detect
     global depth_image_rotate_resize
     global path_package, color_image_name, depth_image_name
     global x_mouse, y_mouse, x_obstacle, y_obstacle, width_image_resize, height_image_resize
+
+    # self.displayPointCloudInfo(depth_data, True, False)
     try:
       if cameraInfo is None:
         cameraInfo = camera_info
+        
 
-      depth_image = self.bridge.imgmsg_to_cv2(depth_data, TYPE_DEPTH_IMAGE)
-      cv_rgb = self.bridge.imgmsg_to_cv2(rgb_data, TYPE_COLOR_IMAGE)
+      # ///////////
+      # pc = ros_numpy.numpify(depth_data)
+      # points=np.zeros((pc.shape[0],3))
+      # points[:,0]=pc['x']
+      # points[:,1]=pc['y']
+      # points[:,2]=pc['z']
+      # p = pcl.PointCloud(np.array(points, dtype=np.float32))
 
-      width_image = 0
-      height_image = 0
-      origin_width = 0
-      origin_height = 0
-      if use_rotate:
-        cv_rgb = cv2.rotate(cv_rgb, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        depth_image_rotate = cv2.rotate(depth_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        width_image = height_image_resize
-        height_image = width_image_resize
-        origin_width = depth_image.shape[0]/2
-        origin_height = depth_image.shape[1]/2
-      else:
-        depth_image_rotate = depth_image
-        width_image = width_image_resize
-        height_image = height_image_resize
-        origin_width = depth_image.shape[1]/2
-        origin_height = depth_image.shape[0]/2
-      # rospy.loginfo("width_image = %d", width_image)
-      # rospy.loginfo("height_image = %d", height_image)
+      data = np.zeros(10, dtype=[('x', np.float32), ('y', np.float32), ('vectors', np.float32, (3,))])
+      data['x'] = np.random.random((10,))
+      data['y'] = data['x']*2
+      data['vectors'] = np.arange(10)[:,np.newaxis]
+      msg = ros_numpy.msgify(PointCloud2, data)
+      print("msg: ", msg)
+      data = ros_numpy.numpify(msg)
+      print("data: ", data)
+      
 
-      depth_image_rotate_resize = self.resize(depth_image_rotate, width_image, height_image, origin_width, origin_height)
 
-      cv2.setMouseCallback(depth_image_name, self.mouseEvent)
-      cv2.circle(depth_image_rotate_resize, (x_mouse, y_mouse), 3, (0, 0, 255), -1)
-      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image/2+x_mouse, depth_image.shape[0]/2-height_image/2+y_mouse), 3, (0, 0, 255), -1)
+
+      ############################################################################
+
+      # depth_image = self.bridge.imgmsg_to_cv2(depth_data, TYPE_DEPTH_IMAGE)
+      # cv_rgb = self.bridge.imgmsg_to_cv2(rgb_data, TYPE_COLOR_IMAGE)
+
+      # width_image = 0
+      # height_image = 0
+      # origin_width = 0
+      # origin_height = 0
+      # if use_rotate:
+      #   cv_rgb = cv2.rotate(cv_rgb, cv2.ROTATE_90_COUNTERCLOCKWISE)
+      #   depth_image_rotate = cv2.rotate(depth_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+      #   width_image = height_image_resize
+      #   height_image = width_image_resize
+      #   origin_width = depth_image.shape[0]/2
+      #   origin_height = depth_image.shape[1]/2
+      # else:
+      #   depth_image_rotate = depth_image
+      #   width_image = width_image_resize
+      #   height_image = height_image_resize
+      #   origin_width = depth_image.shape[1]/2
+      #   origin_height = depth_image.shape[0]/2
+
+      # depth_image_rotate_resize = self.resize(depth_image_rotate, width_image, height_image, origin_width, origin_height)
+
+      # cv2.setMouseCallback(depth_image_name, self.mouseEvent)
+      # cv2.circle(depth_image_rotate_resize, (x_mouse, y_mouse), 3, (0, 0, 255), -1)
+      # cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image/2+x_mouse, depth_image.shape[0]/2-height_image/2+y_mouse), 3, (0, 0, 255), -1)
   
-      prior_time = time.time()
-      x_obstacle, y_obstacle = self.detectObstacle(use_detect, depth_image_rotate_resize, width_image, height_image)
-      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image/2+x_obstacle, depth_image.shape[0]/2-height_image/2+y_obstacle), 3, (255, 0, 255), -1)
-      rospy.loginfo("Time to check: %f", time.time()-prior_time) 
+      # prior_time = time.time()
+      # x_obstacle, y_obstacle = self.detectObstacle(use_detect, depth_image_rotate_resize, width_image, height_image)
+      # cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image/2+x_obstacle, depth_image.shape[0]/2-height_image/2+y_obstacle), 3, (255, 0, 255), -1)
+      # rospy.loginfo("Time to check: %f", time.time()-prior_time) 
 
-      self.mouseDistance(cv_rgb, depth_image, OFFSET, x_mouse, y_mouse)
+      # self.mouseDistance(cv_rgb, depth_image, OFFSET, x_mouse, y_mouse)
     except CvBridgeError as e:
       print(e)
 
       
-    try:
-      depth_image_message = self.bridge.cv2_to_imgmsg(depth_image_rotate_resize, TYPE_DEPTH_IMAGE)
-      color_image_message = self.bridge.cv2_to_imgmsg(cv_rgb, TYPE_COLOR_IMAGE)
-      self.depth_image_message_pub.publish(depth_image_message)
-      self.color_image_message_pub.publish(color_image_message)
-      self.showRosImage(color_image_name, color_image_message, TYPE_COLOR_IMAGE)
-      self.showRosImage(depth_image_name, depth_image_message, TYPE_DEPTH_IMAGE)
-    except CvBridgeError as e:
-      print(e)
-      
+    # try:
+      # self.showImage(color_image_name, cv_rgb, TYPE_COLOR_IMAGE)
+      # self.showImage(depth_image_name, depth_image_rotate_resize, TYPE_DEPTH_IMAGE)
+
+      # depth_image_message = self.bridge.cv2_to_imgmsg(depth_image_rotate_resize, TYPE_DEPTH_IMAGE)
+      # color_image_message = self.bridge.cv2_to_imgmsg(cv_rgb, TYPE_COLOR_IMAGE)
+      # self.depth_image_message_pub.publish(depth_image_message)
+      # self.color_image_message_pub.publish(color_image_message)
+    # except CvBridgeError as e:
+    #   print(e)
+
+  def displayPointCloudInfo(sefl, depth_data, isDisplayFields, isDisplayData):
+    rospy.loginfo("header.seq: %d", depth_data.header.seq)
+    # rospy.loginfo("header.stamp: %f", depth_data.header.stamp)
+    rospy.loginfo("header.frame_id: %s", depth_data.header.frame_id)
+    rospy.loginfo("height: %d", depth_data.height)
+    rospy.loginfo("width: %d", depth_data.width) 
+    if isDisplayFields:
+      print(depth_data.fields)
+    rospy.loginfo("is_bigendian: %d", depth_data.is_bigendian)
+    rospy.loginfo("point_step: %d", depth_data.point_step)
+    rospy.loginfo("row_step: %d", depth_data.row_step)
+    rospy.loginfo("is_dense: %d", depth_data.is_dense)
+    if isDisplayData:
+      rospy.loginfo("data.length: %d", len(depth_data.data))
+      print(depth_data.data)
+
   def getCameraInfo(self):
     # cameraInfo_K = np.array(cameraInfo.K)
     # Intrinsic camera matrix for the raw (distorted) images.
@@ -163,9 +216,9 @@ class get_distance_object_from_camera:
     topic_color_image_sub = "/sick_visionary_t_mini/intensity"
     topic_depth_image_sub = "/sick_visionary_t_mini/points"
 
-  def showRosImage(self, window_name, image_ros_data, type_image):
+  def showImage(self, window_name, cv_image, type_image):
     try:
-      cv_image = self.bridge.imgmsg_to_cv2(image_ros_data, type_image)
+      # cv_image = self.bridge.imgmsg_to_cv2(image_ros_data, type_image)
       cv2.imshow(window_name, cv_image)
       cv2.waitKey(30)
     except:
@@ -294,4 +347,7 @@ def main(args):
     print("Shutting down")
 
 if __name__ == '__main__':
+  try:
     main(sys.argv)
+  except KeyboardInterrupt:
+    print("ERROR")
