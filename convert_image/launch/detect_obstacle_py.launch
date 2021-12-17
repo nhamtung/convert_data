@@ -10,15 +10,15 @@
     <arg name="usb_port_id_left"              default="2-2"/>
     <arg name="top_image_left_resize"         value="238"/>
     <arg name="bottom_image_left_resize"      value="238"/>
-    <arg name="left_image_left_resize"        value="300"/>
-    <arg name="right_image_left_resize"       value="200"/>
+    <arg name="left_image_left_resize"        value="20"/>
+    <arg name="right_image_left_resize"       value="420"/>
 
     <arg name="camera_right"                  default="/camera_right"/>  
     <arg name="usb_port_id_right"             default="2-4"/>
     <arg name="top_image_right_resize"        value="238"/>
     <arg name="bottom_image_right_resize"     value="238"/>
-    <arg name="left_image_right_resize"       value="300"/>
-    <arg name="right_image_right_resize"      value="200"/>
+    <arg name="left_image_right_resize"       value="200"/>
+    <arg name="right_image_right_resize"      value="420"/>
 
 
     <include file="$(find realsense2_camera)/launch/rs_camera.launch">

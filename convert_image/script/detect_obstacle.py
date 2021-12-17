@@ -43,8 +43,8 @@ distance_field_warning = 1.2
 distance_field_dangerous = 0.7
 top_image_resize = 240
 bottom_image_resize = 240
-left_image_resize = 320
-right_image_resize = 320
+left_image_resize = 424
+right_image_resize = 424
 
 color_image_name = camera + "/color_image"
 depth_image_name = camera + "/depth_image"
@@ -100,6 +100,8 @@ class get_distance_object_from_camera:
 
       scale_depth_color_width = float(cv_rgb.shape[0])/float(depth_image.shape[0])
       scale_depth_color_height = float(cv_rgb.shape[1])/float(depth_image.shape[1])
+      # print("cv_rgb.shape: ", cv_rgb.shape)
+      # print("depth_image.shape: ", depth_image.shape)
       # rospy.loginfo("scale_depth_color_width: %f", scale_depth_color_width)
       # rospy.loginfo("scale_depth_color_height: %f", scale_depth_color_height)
 
@@ -112,12 +114,12 @@ class get_distance_object_from_camera:
       if use_rotate_90_counter_clockwise:
         cv_rgb_rotate = cv2.rotate(cv_rgb, cv2.ROTATE_90_COUNTERCLOCKWISE)
         depth_image_rotate = cv2.rotate(depth_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        top_image = left_image_resize
-        bottom_image = right_image_resize
-        left_image = bottom_image_resize
-        right_image = top_image_resize
-        origin_width = depth_image.shape[0]/2
-        origin_height = depth_image.shape[1]/2
+        top_image = right_image_resize
+        bottom_image = left_image_resize
+        left_image = top_image_resize
+        right_image = bottom_image_resize
+        origin_width = depth_image_rotate.shape[1]/2
+        origin_height = depth_image_rotate.shape[0]/2
         template = scale_depth_color_width
         scale_depth_color_width = scale_depth_color_height
         scale_depth_color_height = template
@@ -128,9 +130,12 @@ class get_distance_object_from_camera:
         bottom_image = bottom_image_resize
         left_image = left_image_resize
         right_image = right_image_resize
-        origin_width = depth_image.shape[1]/2
-        origin_height = depth_image.shape[0]/2
+        origin_width = depth_image_rotate.shape[0]/2
+        origin_height = depth_image_rotate.shape[1]/2
 
+      rospy.loginfo("top_image = %d, bottom_image = %d, left_image = %d, right_image = %d", top_image, bottom_image, left_image, right_image)
+      rospy.loginfo("origin_width = %d, origin_height = %d", origin_width, origin_height)
+      # print("depth_image_rotate.shape: ", depth_image_rotate.shape)
       depth_image_rotate_resize = self.resize(depth_image_rotate, top_image, bottom_image, left_image, right_image, origin_width, origin_height)
       cv2.circle(cv_rgb_rotate, (cv_rgb_rotate.shape[1]/2, cv_rgb_rotate.shape[0]/2), 3, (0, 255, 255), -1)
       cv2.setMouseCallback(depth_image_name, self.mouseEvent)
@@ -147,7 +152,7 @@ class get_distance_object_from_camera:
   
       prior_time = time.time()
       x_obstacle, y_obstacle = self.detectObstacle(use_detect, depth_image_rotate_resize, top_image, bottom_image, left_image, right_image)
-      cv2.circle(cv_rgb_rotate, (depth_image.shape[1]/2-left_image+x_obstacle, depth_image.shape[0]/2-top_image+y_obstacle), 3, (255, 0, 255), -1)
+      cv2.circle(cv_rgb_rotate, (depth_image_rotate.shape[1]/2-left_image+x_obstacle, depth_image_rotate.shape[0]/2-top_image+y_obstacle), 3, (255, 0, 255), -1)
       rospy.loginfo("Time to check: %f", time.time()-prior_time) 
 
       self.mouseDistance(cv_rgb_rotate, depth_image_rotate, depth_image_rotate_resize, OFFSET, x_mouse, y_mouse)
@@ -206,6 +211,7 @@ class get_distance_object_from_camera:
     distance_field_detect = rospy.get_param(node_name + "/distance_field_detect")
     distance_field_warning = rospy.get_param(node_name + "/distance_field_warning")
     distance_field_dangerous = rospy.get_param(node_name + "/distance_field_dangerous")
+    rospy.loginfo("top_image_resize = %d, bottom_image_resize = %d, left_image_resize = %d, right_image_resize = %d", top_image_resize, bottom_image_resize, left_image_resize, right_image_resize)
 
   def showImage(self, window_name, cv_image):
     try:
@@ -227,7 +233,7 @@ class get_distance_object_from_camera:
   def resize(self, depth_image, top_image, bottom_image, left_image, right_image, origin_x, origin_y):
     depth_image_resize = depth_image
     if self.checkSize(depth_image, top_image, bottom_image, left_image, right_image):
-      # rospy.loginfo("top_image = %d, bottom_image = %d, left_image = %d, right_image = %d", top_image, bottom_image, left_image, right_image)
+      rospy.loginfo("top_image = %d, bottom_image = %d, left_image = %d, right_image = %d", top_image, bottom_image, left_image, right_image)
       depth_image_resize = depth_image[origin_y-top_image:origin_y+bottom_image, origin_x-left_image:origin_x+right_image]
     return depth_image_resize
   
@@ -274,10 +280,10 @@ class get_distance_object_from_camera:
     roi_depth = depth_image[y_mouse:y_mouse+offset, x_mouse:x_mouse+offset]
     point_x, point_y, point_z, dist = self.getDistance(roi_depth)
     if not dist is None:
-      point_x_str = str(format(point_x, '.2f')) + "m"
-      point_y_str = str(format(point_y, '.2f')) + "m"
-      point_z_str = str(format(point_z, '.2f')) + "m"
-      dist_str = str(format(dist, '.2f')) + "m"
+      point_x_str = "x: " + str(format(point_x, '.2f')) + "m"
+      point_y_str = "y: " + str(format(point_y, '.2f')) + "m"
+      point_z_str = "z: " + str(format(point_z, '.2f')) + "m"
+      dist_str    = "d: " + str(format(dist   , '.2f')) + "m"
 
       center_x_ = int((depth_image.shape[1]/2-depth_image_resize.shape[1]/2+x_mouse))
       if x_mouse < depth_image_resize.shape[1]/2:
