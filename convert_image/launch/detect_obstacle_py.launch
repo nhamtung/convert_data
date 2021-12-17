@@ -8,13 +8,17 @@
 
     <arg name="camera_left"                   default="/camera_left"/>
     <arg name="usb_port_id_left"              default="2-2"/>
-    <arg name="width_image_left_resize"       value="500"/>
-    <arg name="height_image_left_resize"      value="400"/>
+    <arg name="top_image_left_resize"         value="238"/>
+    <arg name="bottom_image_left_resize"      value="238"/>
+    <arg name="left_image_left_resize"        value="300"/>
+    <arg name="right_image_left_resize"       value="200"/>
 
     <arg name="camera_right"                  default="/camera_right"/>  
     <arg name="usb_port_id_right"             default="2-4"/>
-    <arg name="width_image_right_resize"      value="320"/>
-    <arg name="height_image_right_resize"     value="240"/>
+    <arg name="top_image_right_resize"        value="238"/>
+    <arg name="bottom_image_right_resize"     value="238"/>
+    <arg name="left_image_right_resize"       value="300"/>
+    <arg name="right_image_right_resize"      value="200"/>
 
 
     <include file="$(find realsense2_camera)/launch/rs_camera.launch">
@@ -28,7 +32,7 @@
 
     <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_left)">
         <param name="use_detect"                        value="true" />
-        <param name="use_rotate"                        value="true" />
+        <param name="use_rotate_90_counter_clockwise"   value="true" />
         <param name="is_display_origin_color_image"     value="false" />
         <param name="is_display_origin_depth_image"     value="false" />
         <param name="is_display_resize_depth_image"     value="true" />
@@ -36,15 +40,17 @@
         <param name="topic_camera_info_sub"             value="$(arg topic_camera_info_sub)" />
         <param name="topic_color_image_sub"             value="$(arg topic_color_image_sub)" />
         <param name="topic_depth_image_sub"             value="$(arg topic_depth_image_sub)" />
-        <param name="width_image_resize"                value="$(arg width_image_left_resize)" />
-        <param name="height_image_resize"               value="$(arg height_image_left_resize)" />
+        <param name="top_image_resize"                  value="$(arg top_image_left_resize)" />
+        <param name="bottom_image_resize"               value="$(arg bottom_image_left_resize)" />
+        <param name="left_image_resize"                 value="$(arg left_image_left_resize)" />
+        <param name="right_image_resize"                value="$(arg right_image_left_resize)" />
         <param name="distance_field_detect"             value="$(arg distance_field_detect)" />
         <param name="distance_field_warning"            value="$(arg distance_field_warning)" />
         <param name="distance_field_dangerous"          value="$(arg distance_field_dangerous)" />
     </node>
     <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_right)">
         <param name="use_detect"                        value="true" />
-        <param name="use_rotate"                        value="true" />
+        <param name="use_rotate_90_counter_clockwise"   value="true" />
         <param name="is_display_origin_color_image"     value="false" />
         <param name="is_display_origin_depth_image"     value="false" />
         <param name="is_display_resize_depth_image"     value="true" />
@@ -52,8 +58,10 @@
         <param name="topic_camera_info_sub"             value="$(arg topic_camera_info_sub)" />
         <param name="topic_color_image_sub"             value="$(arg topic_color_image_sub)" />
         <param name="topic_depth_image_sub"             value="$(arg topic_depth_image_sub)" />
-        <param name="width_image_resize"                value="$(arg width_image_left_resize)" />
-        <param name="height_image_resize"               value="$(arg height_image_left_resize)" />
+        <param name="top_image_resize"                  value="$(arg top_image_right_resize)" />
+        <param name="bottom_image_resize"               value="$(arg bottom_image_right_resize)" />
+        <param name="left_image_resize"                 value="$(arg left_image_right_resize)" />
+        <param name="right_image_resize"                value="$(arg right_image_right_resize)" />
         <param name="distance_field_detect"             value="$(arg distance_field_detect)" />
         <param name="distance_field_warning"            value="$(arg distance_field_warning)" />
         <param name="distance_field_dangerous"          value="$(arg distance_field_dangerous)" />
