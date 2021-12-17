@@ -105,7 +105,7 @@ class get_distance_object_from_camera:
       origin_width = 0
       origin_height = 0
       if use_rotate:
-        cv_rgb = cv2.rotate(cv_rgb, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        cv_rgb_rotate = cv2.rotate(cv_rgb, cv2.ROTATE_90_COUNTERCLOCKWISE)
         depth_image_rotate = cv2.rotate(depth_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
         width_image = height_image_resize
         height_image = width_image_resize
@@ -115,6 +115,7 @@ class get_distance_object_from_camera:
         scale_depth_color_width = scale_depth_color_height
         scale_depth_color_height = template
       else:
+        cv_rgb_rotate = cv_rgb
         depth_image_rotate = depth_image
         width_image = width_image_resize
         height_image = height_image_resize
@@ -122,35 +123,33 @@ class get_distance_object_from_camera:
         origin_height = depth_image.shape[0]/2
 
       depth_image_rotate_resize = self.resize(depth_image_rotate, width_image, height_image, origin_width, origin_height)
-
+      cv2.circle(cv_rgb_rotate, (cv_rgb_rotate.shape[1]/2, cv_rgb_rotate.shape[0]/2), 3, (0, 255, 255), -1)
       cv2.setMouseCallback(depth_image_name, self.mouseEvent)
-      cv2.circle(cv_rgb, (cv_rgb.shape[1]/2, cv_rgb.shape[0]/2), 3, (0, 255, 255), -1)
-      center_x = int((depth_image_rotate.shape[0]/2-width_image/2+width_image/2)/(scale_depth_color_width/2))
-      center_y = int((depth_image_rotate.shape[1]/2-height_image/2+height_image/2)/(scale_depth_color_height/2))
-      rospy.loginfo("depth_image.shape[0]/2-width_image/2+x_mouse: %d", depth_image_rotate.shape[0]/2-width_image/2+x_mouse)
-      rospy.loginfo("depth_image.shape[1]/2-height_image/2+y_mouse: %d", depth_image_rotate.shape[1]/2-height_image/2+y_mouse)
-      rospy.loginfo("center_x: %d", center_x)
-      rospy.loginfo("center_y: %d", center_y)
-      cv2.circle(cv_rgb, (center_x, center_y), 3, (0, 0, 255), -1)
-      # cv2.rectangle(cv_rgb, (cv_rgb.shape[0]/2-int(scale_depth_color_width*width_image/2), cv_rgb.shape[1]/2-int(scale_depth_color_height*height_image/2)), 
-      #              (cv_rgb.shape[0]/2+int(scale_depth_color_width*width_image/2), cv_rgb.shape[1]/2+int(scale_depth_color_height*height_image/2)), (255, 0, 0), 2)
+
+      center_start_x_ = depth_image_rotate.shape[1]/2 - width_image/2
+      center_start_x = cv_rgb_rotate.shape[1]/2-int(abs(depth_image_rotate.shape[1]/2-center_start_x_)*scale_depth_color_width)
+      center_end_x = cv_rgb_rotate.shape[1]/2+int(abs(depth_image_rotate.shape[1]/2-center_start_x_)*scale_depth_color_width)
+      center_start_y_ = depth_image_rotate.shape[0]/2 - height_image/2
+      center_start_y = cv_rgb_rotate.shape[0]/2-int(abs(depth_image_rotate.shape[0]/2-center_start_y_)*scale_depth_color_height)
+      center_end_y = cv_rgb_rotate.shape[0]/2+int(abs(depth_image_rotate.shape[0]/2-center_start_y_)*scale_depth_color_height)
+      cv2.rectangle(cv_rgb_rotate, (center_start_x, center_start_y), (center_end_x, center_end_y), (255, 0, 0), 2)
   
       prior_time = time.time()
       x_obstacle, y_obstacle = self.detectObstacle(use_detect, depth_image_rotate_resize, width_image, height_image)
-      cv2.circle(cv_rgb, (depth_image.shape[1]/2-width_image/2+x_obstacle, depth_image.shape[0]/2-height_image/2+y_obstacle), 3, (255, 0, 255), -1)
+      cv2.circle(cv_rgb_rotate, (depth_image.shape[1]/2-width_image/2+x_obstacle, depth_image.shape[0]/2-height_image/2+y_obstacle), 3, (255, 0, 255), -1)
       rospy.loginfo("Time to check: %f", time.time()-prior_time) 
 
-      self.mouseDistance(cv_rgb, depth_image, OFFSET, x_mouse, y_mouse)
+      self.mouseDistance(cv_rgb_rotate, depth_image_rotate, depth_image_rotate_resize, OFFSET, x_mouse, y_mouse)
     except CvBridgeError as e:
       print(e)
 
       
     try:
-      self.showImage(color_image_name, cv_rgb)
+      self.showImage(color_image_name, cv_rgb_rotate)
       self.showImage(depth_image_name, depth_image_rotate_resize)
 
       depth_image_message = self.bridge.cv2_to_imgmsg(depth_image_rotate_resize, TYPE_DEPTH_IMAGE)
-      color_image_message = self.bridge.cv2_to_imgmsg(cv_rgb, TYPE_COLOR_IMAGE)
+      color_image_message = self.bridge.cv2_to_imgmsg(cv_rgb_rotate, TYPE_COLOR_IMAGE)
       self.depth_image_message_pub.publish(depth_image_message)
       self.color_image_message_pub.publish(color_image_message)
     except CvBridgeError as e:
@@ -255,20 +254,32 @@ class get_distance_object_from_camera:
       dist = math.sqrt(point_x * point_x + point_y * point_y + point_z * point_z)
     return point_x, point_y, point_z, dist
         
-  def mouseDistance(self, cv_rgb, depth_image, offset, x_mouse, y_mouse):
-    global depth_image_rotate_resize
-    roi_depth = depth_image_rotate_resize[y_mouse:y_mouse+offset, x_mouse:x_mouse+offset]
+  def mouseDistance(self, cv_rgb, depth_image, depth_image_resize, offset, x_mouse, y_mouse):
+    global scale_depth_color_width, scale_depth_color_height
+    roi_depth = depth_image[y_mouse:y_mouse+offset, x_mouse:x_mouse+offset]
     point_x, point_y, point_z, dist = self.getDistance(roi_depth)
     if not dist is None:
       point_x_str = str(format(point_x, '.2f')) + "m"
       point_y_str = str(format(point_y, '.2f')) + "m"
       point_z_str = str(format(point_z, '.2f')) + "m"
       dist_str = str(format(dist, '.2f')) + "m"
-      cv2.putText(depth_image_rotate_resize, dist_str, (x_mouse+5, y_mouse), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
-      cv2.putText(cv_rgb, point_x_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
-      cv2.putText(cv_rgb, point_y_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse+30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
-      cv2.putText(cv_rgb, point_z_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse+60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
-      cv2.putText(cv_rgb, dist_str, (depth_image.shape[1]/2-width_image_resize/2+x_mouse+5, depth_image.shape[0]/2-height_image_resize/2+y_mouse+90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+
+      center_x_ = int((depth_image.shape[1]/2-depth_image_resize.shape[1]/2+x_mouse))
+      if x_mouse < depth_image_resize.shape[1]/2:
+        center_x = cv_rgb.shape[1]/2-int(abs(depth_image.shape[1]/2-center_x_)*scale_depth_color_width)
+      else:
+        center_x = cv_rgb.shape[1]/2+int(abs(depth_image.shape[1]/2-center_x_)*scale_depth_color_width)
+      center_y_ = int((depth_image.shape[0]/2-depth_image_resize.shape[0]/2+y_mouse))
+      if y_mouse < depth_image_resize.shape[0]/2:
+        center_y = cv_rgb.shape[0]/2-int(abs(depth_image.shape[0]/2-center_y_)*scale_depth_color_height)
+      else:
+        center_y = cv_rgb.shape[0]/2+int(abs(depth_image.shape[0]/2-center_y_)*scale_depth_color_height)
+      cv2.circle(cv_rgb, (center_x, center_y), 3, (0, 0, 255), -1)
+
+      cv2.putText(cv_rgb, point_x_str, (depth_image.shape[1]/2-depth_image_resize.shape[1]/2+x_mouse+5, depth_image.shape[0]/2-depth_image_resize.shape[0]/2+y_mouse), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+      cv2.putText(cv_rgb, point_y_str, (depth_image.shape[1]/2-depth_image_resize.shape[1]/2+x_mouse+5, depth_image.shape[0]/2-depth_image_resize.shape[0]/2+y_mouse+30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+      cv2.putText(cv_rgb, point_z_str, (depth_image.shape[1]/2-depth_image_resize.shape[1]/2+x_mouse+5, depth_image.shape[0]/2-depth_image_resize.shape[0]/2+y_mouse+60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+      cv2.putText(cv_rgb, dist_str, (depth_image.shape[1]/2-depth_image_resize.shape[1]/2+x_mouse+5, depth_image.shape[0]/2-depth_image_resize.shape[0]/2+y_mouse+90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
 
   def detectObstacleThread(self):
     global OFFSET, use_detect, x_obstacle, y_obstacle

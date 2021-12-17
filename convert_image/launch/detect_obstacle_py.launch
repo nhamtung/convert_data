@@ -8,13 +8,13 @@
 
     <arg name="camera_left"                   default="/camera_left"/>
     <arg name="usb_port_id_left"              default="2-2"/>
-    <arg name="width_image_left_resize"       value="640"/>
-    <arg name="height_image_left_resize"      value="480"/>
+    <arg name="width_image_left_resize"       value="500"/>
+    <arg name="height_image_left_resize"      value="400"/>
 
     <arg name="camera_right"                  default="/camera_right"/>  
     <arg name="usb_port_id_right"             default="2-4"/>
-    <arg name="width_image_right_resize"      value="640"/>
-    <arg name="height_image_right_resize"     value="480"/>
+    <arg name="width_image_right_resize"      value="320"/>
+    <arg name="height_image_right_resize"     value="240"/>
 
 
     <include file="$(find realsense2_camera)/launch/rs_camera.launch">
@@ -44,7 +44,7 @@
     </node>
     <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_right)">
         <param name="use_detect"                        value="true" />
-        <param name="use_rotate"                        value="false" />
+        <param name="use_rotate"                        value="true" />
         <param name="is_display_origin_color_image"     value="false" />
         <param name="is_display_origin_depth_image"     value="false" />
         <param name="is_display_resize_depth_image"     value="true" />
