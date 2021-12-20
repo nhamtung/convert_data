@@ -1,5 +1,5 @@
 <launch>
-    <arg name="topic_camera_info_sub"         default="/color/camera_info"/>
+    <arg name="topic_camera_info_sub"         default="/depth/camera_info"/>
     <arg name="topic_color_image_sub"         default="/color/image_raw"/>
     <arg name="topic_depth_image_sub"         default="/depth/image_rect_raw"/>  
     <arg name="distance_field_detect"         value="1.7"/> 
@@ -10,10 +10,10 @@
     <arg name="usb_port_id_left"              default="2-2"/>
     <arg name="top_image_left_resize"         value="238"/>
     <arg name="bottom_image_left_resize"      value="238"/>
-    <arg name="left_image_left_resize"        value="20"/>
-    <arg name="right_image_left_resize"       value="420"/>
+    <arg name="left_image_left_resize"        value="100"/>
+    <arg name="right_image_left_resize"       value="424"/>
 
-    <arg name="camera_right"                  default="/camera_right"/>  
+    <arg name="camera_right"                  default="/camera_right"/>
     <arg name="usb_port_id_right"             default="2-4"/>
     <arg name="top_image_right_resize"        value="238"/>
     <arg name="bottom_image_right_resize"     value="238"/>
@@ -66,8 +66,6 @@
         <param name="distance_field_warning"            value="$(arg distance_field_warning)" />
         <param name="distance_field_dangerous"          value="$(arg distance_field_dangerous)" />
     </node>
-
-    <!-- <node name="view" pkg="convert_image" type="view.py" output="screen"></node> -->
 
 
     <arg name="open_rviz" default="false"/>
