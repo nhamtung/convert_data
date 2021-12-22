@@ -48,7 +48,7 @@
         <param name="distance_field_warning"            value="$(arg distance_field_warning)" />
         <param name="distance_field_dangerous"          value="$(arg distance_field_dangerous)" />
     </node>
-    <!-- <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_right)">
+    <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_right)">
         <param name="use_detect"                        value="true" />
         <param name="use_rotate_90_counter_clockwise"   value="true" />
         <param name="is_display_origin_color_image"     value="true" />
@@ -65,7 +65,7 @@
         <param name="distance_field_detect"             value="$(arg distance_field_detect)" />
         <param name="distance_field_warning"            value="$(arg distance_field_warning)" />
         <param name="distance_field_dangerous"          value="$(arg distance_field_dangerous)" />
-    </node> -->
+    </node>
 
 
     <arg name="open_rviz" default="false"/>
