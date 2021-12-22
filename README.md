@@ -25,6 +25,12 @@
     + $ls /dev/video*
     + expect: /dev/video0  /dev/video1  /dev/video2
 
+- Config camera:
+    + Open camera: $realsense-viewer
+    + On Stereo Module
+    + Deselect "Enable Auto Exposure"
+    + Set "Controls/Exposure": 20000
+
 - Run depth camera: $roslaunch realsense2_camera rs_camera.launch
 
 - Run convert_image program: $roslaunch convert_image convert_image.launch

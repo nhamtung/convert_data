@@ -18,7 +18,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
 import math
 
-OFFSET = 12
+OFFSET = 4
 TYPE_DEPTH_IMAGE = "16UC1"
 TYPE_COLOR_IMAGE = "bgr8"
 
@@ -157,27 +157,24 @@ class get_distance_object_from_camera:
 
       if is_display_origin_color_image:
         if len(detect_point) != 0:
-          for i in range(0, len(detect_point)):
-            if i%2 == 0:
-              center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, detect_point[i], detect_point[i+1])
-              cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 0), -1)
+          for i in range(0, len(detect_point),2):
+            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, detect_point[i], detect_point[i+1])
+            cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 0), -1)
         if len(warning_point) != 0:
-          for i in range(0, len(warning_point)):
-            if i%2 == 0:
-              center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, warning_point[i], warning_point[i+1])
-              cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 255), -1)
+          for i in range(0, len(warning_point),2):
+            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, warning_point[i], warning_point[i+1])
+            cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 255), -1)
         if len(dangerous_point) != 0:
-          for i in range(0, len(dangerous_point)):
-            if i%2 == 0:
-              center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, dangerous_point[i], dangerous_point[i+1])
-              cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 0, 255), -1)
+          for i in range(0, len(dangerous_point),2):
+            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, dangerous_point[i], dangerous_point[i+1])
+            cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 0, 255), -1)
 
         cv2.circle(cv_rgb_rotate_resize, (cv_rgb_rotate_resize.shape[1]/2, cv_rgb_rotate_resize.shape[0]/2), 3, (0, 0, 0), -1)
         center_start_x, center_start_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, 0, 0)
         center_end_x, center_end_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, depth_image_rotate_resize.shape[1], depth_image_rotate_resize.shape[0])
         cv2.rectangle(cv_rgb_rotate_resize, (center_start_x, center_start_y), (center_end_x, center_end_y), (255, 255, 0), 3)
 
-      # self.mouseDistance(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, OFFSET, x_mouse, y_mouse)
+      self.mouseDistance(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, OFFSET, x_mouse, y_mouse)
     except CvBridgeError as e:
       print(e)
 
@@ -382,16 +379,20 @@ class get_distance_object_from_camera:
       num_dangerous = 0
       num_warning = 0
       num_detect  = 0
-      if len(dangerous_point)>100:
-        # rospy.loginfo(node_name + " - len(dangerous_point): %d", len(dangerous_point))
-        for i in range(0,len(dangerous_point)-6, 6):
+      if len(dangerous_point)>50:
+        for i in range(0,len(dangerous_point)-12, 2):
           # rospy.loginfo(node_name + "dangerous_point[i+2]-dangerous_point[i  ]-OFFSET: %d", dangerous_point[i+2]-dangerous_point[i]-OFFSET)
           # rospy.loginfo(node_name + "dangerous_point[i+4]-dangerous_point[i+2]-OFFSET: %d", dangerous_point[i+4]-dangerous_point[i+2]-OFFSET)
           # rospy.loginfo(node_name + "dangerous_point[i+6]-dangerous_point[i+4]-OFFSET: %d", dangerous_point[i+6]-dangerous_point[i+4]-OFFSET)
-          if dangerous_point[i+2]-dangerous_point[i]-OFFSET < 2 and dangerous_point[i+2]-dangerous_point[i]-OFFSET >= 0:
-            if dangerous_point[i+4]-dangerous_point[i+2]-OFFSET < 2 and dangerous_point[i+4]-dangerous_point[i+2]-OFFSET >= 0:
-              if dangerous_point[i+6]-dangerous_point[i+4]-OFFSET < 2 and dangerous_point[i+6]-dangerous_point[i+4]-OFFSET >= 0:
-                num_dangerous = num_dangerous + 1
+          # rospy.loginfo(node_name + "dangerous_point[i+8]-dangerous_point[i+6]-OFFSET: %d", dangerous_point[i+8]-dangerous_point[i+6]-OFFSET)
+          # rospy.loginfo(node_name + "dangerous_point[i+10]-dangerous_point[i+8]-OFFSET: %d", dangerous_point[i+10]-dangerous_point[i+8]-OFFSET)
+          if dangerous_point[i+2]-dangerous_point[i] == 0:
+            if dangerous_point[i+4]-dangerous_point[i+2] == 0:
+              if dangerous_point[i+6]-dangerous_point[i+4] == 0:
+                if dangerous_point[i+8]-dangerous_point[i+6] == 0:
+                  if dangerous_point[i+10]-dangerous_point[i+8] == 0:
+                    if dangerous_point[i+12]-dangerous_point[i+10] == 0:
+                        num_dangerous = num_dangerous + 1
         if num_dangerous>0:
           rospy.logerr(node_name + " - Dangerous Obstacle: %d", num_dangerous)
         for i in range(0, len(detect_point)):
@@ -400,11 +401,14 @@ class get_distance_object_from_camera:
           warning_point.pop(0)
       elif len(warning_point)>50:
         rospy.loginfo(node_name + " - len(warning_point): %d", len(warning_point))
-        for i in range(0,len(warning_point)-6, 6):
-          if warning_point[i+2]-warning_point[i]-OFFSET < 2 and warning_point[i+2]-warning_point[i]-OFFSET >= 0:
-            if warning_point[i+4]-warning_point[i+2]-OFFSET < 2 and warning_point[i+4]-warning_point[i+2]-OFFSET >= 0:
-              if warning_point[i+6]-warning_point[i+4]-OFFSET < 2 and warning_point[i+6]-warning_point[i+4]-OFFSET >= 0:
-                num_warning = num_warning + 1
+        for i in range(0,len(warning_point)-12, 2):
+          if warning_point[i+2]-warning_point[i] == 0:
+            if warning_point[i+4]-warning_point[i+2] == 0:
+              if warning_point[i+6]-warning_point[i+4] == 0:
+                if warning_point[i+8]-warning_point[i+6] == 0:
+                  if warning_point[i+10]-warning_point[i+8] == 0:
+                    if warning_point[i+12]-warning_point[i+10] == 0:
+                        num_warning = num_warning + 1
         if num_warning>0:
           rospy.logwarn(node_name + " - Warning Obstacle: %d", num_warning)
         for i in range(0, len(detect_point)):
@@ -413,11 +417,14 @@ class get_distance_object_from_camera:
           dangerous_point.pop(0)
       elif len(detect_point)>30:
         rospy.loginfo(node_name + " - len(detect_point): %d", len(detect_point))
-        for i in range(0,len(detect_point)-6, 6):
-          if detect_point[i+2]-detect_point[i]-OFFSET < 2 and detect_point[i+2]-detect_point[i]-OFFSET >= 0:
-            if detect_point[i+4]-detect_point[i+2]-OFFSET < 2 and detect_point[i+4]-detect_point[i+2]-OFFSET >= 0:
-              if detect_point[i+6]-detect_point[i+4]-OFFSET < 2 and detect_point[i+6]-detect_point[i+4]-OFFSET >= 0:
-                num_detect = num_detect + 1
+        for i in range(0,len(detect_point)-12, 2):
+          if detect_point[i+2]-detect_point[i] == 0:
+            if detect_point[i+4]-detect_point[i+2] == 0:
+              if detect_point[i+6]-detect_point[i+4] == 0:
+                if detect_point[i+8]-detect_point[i+6] == 0:
+                  if detect_point[i+10]-detect_point[i+8] == 0:
+                    if detect_point[i+12]-detect_point[i+10] == 0:
+                        num_detect = num_detect + 1
         if num_detect>0:
           rospy.loginfo(node_name + " - Detect Obstacle: %d", num_detect)
         for i in range(0, len(warning_point)):
@@ -425,7 +432,6 @@ class get_distance_object_from_camera:
         for i in range(0, len(dangerous_point)):
           dangerous_point.pop(0)
       else:
-        rospy.loginfo(node_name + " - ELSE")
         for i in range(0, len(detect_point)):
           detect_point.pop(0)
         for i in range(0, len(warning_point)):
