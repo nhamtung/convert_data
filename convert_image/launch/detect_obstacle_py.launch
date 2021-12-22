@@ -1,5 +1,5 @@
 <launch>
-    <arg name="topic_camera_info_sub"         default="/depth/camera_info"/>
+    <arg name="topic_camera_info_sub"         default="/color/camera_info"/>
     <arg name="topic_color_image_sub"         default="/color/image_raw"/>
     <arg name="topic_depth_image_sub"         default="/depth/image_rect_raw"/>  
     <arg name="distance_field_detect"         value="1.7"/> 
@@ -10,15 +10,15 @@
     <arg name="usb_port_id_left"              default="2-2"/>
     <arg name="top_image_left_resize"         value="238"/>
     <arg name="bottom_image_left_resize"      value="238"/>
-    <arg name="left_image_left_resize"        value="100"/>
-    <arg name="right_image_left_resize"       value="424"/>
+    <arg name="left_image_left_resize"        value="200"/>
+    <arg name="right_image_left_resize"       value="200"/>
 
     <arg name="camera_right"                  default="/camera_right"/>
     <arg name="usb_port_id_right"             default="2-4"/>
     <arg name="top_image_right_resize"        value="238"/>
     <arg name="bottom_image_right_resize"     value="238"/>
     <arg name="left_image_right_resize"       value="200"/>
-    <arg name="right_image_right_resize"      value="420"/>
+    <arg name="right_image_right_resize"      value="200"/>
 
 
     <include file="$(find realsense2_camera)/launch/rs_camera.launch">
@@ -33,7 +33,7 @@
     <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_left)">
         <param name="use_detect"                        value="true" />
         <param name="use_rotate_90_counter_clockwise"   value="true" />
-        <param name="is_display_origin_color_image"     value="false" />
+        <param name="is_display_origin_color_image"     value="true" />
         <param name="is_display_origin_depth_image"     value="false" />
         <param name="is_display_resize_depth_image"     value="true" />
         <param name="camera"                            value="$(arg camera_left)" />
@@ -48,10 +48,10 @@
         <param name="distance_field_warning"            value="$(arg distance_field_warning)" />
         <param name="distance_field_dangerous"          value="$(arg distance_field_dangerous)" />
     </node>
-    <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_right)">
+    <!-- <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_right)">
         <param name="use_detect"                        value="true" />
         <param name="use_rotate_90_counter_clockwise"   value="true" />
-        <param name="is_display_origin_color_image"     value="false" />
+        <param name="is_display_origin_color_image"     value="true" />
         <param name="is_display_origin_depth_image"     value="false" />
         <param name="is_display_resize_depth_image"     value="true" />
         <param name="camera"                            value="$(arg camera_right)" />
@@ -65,7 +65,7 @@
         <param name="distance_field_detect"             value="$(arg distance_field_detect)" />
         <param name="distance_field_warning"            value="$(arg distance_field_warning)" />
         <param name="distance_field_dangerous"          value="$(arg distance_field_dangerous)" />
-    </node>
+    </node> -->
 
 
     <arg name="open_rviz" default="false"/>

@@ -18,7 +18,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
 import math
 
-OFFSET = 4
+OFFSET = 12
 TYPE_DEPTH_IMAGE = "16UC1"
 TYPE_COLOR_IMAGE = "bgr8"
 
@@ -38,16 +38,17 @@ camera = "/camera"
 topic_camera_info_sub = "/color/camera_info"
 topic_color_image_sub = "/color/image_raw"
 topic_depth_image_sub = "/depth/image_rect_raw"
-distance_field_detect = 1.7
-distance_field_warning = 1.2
+distance_field_detect = 2
+distance_field_warning = 1.4
 distance_field_dangerous = 0.7
 top_image_resize = 240
 bottom_image_resize = 240
 left_image_resize = 424
 right_image_resize = 424
 
-color_image_name = camera + "/color_image"
-depth_image_name = camera + "/depth_image"
+color_image_origin_name = camera + "/color_image_origin"
+depth_image_origin_name = camera + "/depth_image_origin"
+depth_image_resize_name = camera + "/depth_image_resize"
 topic_color_image_pub = "/color_image_message"
 topic_depth_image_pub = "/depth_image_message"
 
@@ -57,6 +58,7 @@ scale_depth_color_height = 0.0
 class get_distance_object_from_camera:
   def __init__(self):
     global node_name, path_package, camera, topic_camera_info_sub, topic_color_image_sub, topic_depth_image_sub, topic_color_image_pub, topic_depth_image_pub
+    global is_display_origin_color_image, is_display_origin_depth_image, is_display_resize_depth_image
     self.bridge = CvBridge()
     node_name = rospy.get_name()
     self.getParam(node_name)
@@ -89,7 +91,7 @@ class get_distance_object_from_camera:
     global TYPE_COLOR_IMAGE, TYPE_DEPTH_IMAGE, OFFSET
     global cameraInfo, use_rotate_90_counter_clockwise, use_detect
     global depth_image_rotate_resize, scale_depth_color_width, scale_depth_color_height
-    global path_package, color_image_name, depth_image_name
+    global path_package, color_image_origin_name, depth_image_origin_name, depth_image_resize_name
     global x_mouse, y_mouse, top_image_resize, bottom_image_resize, left_image_resize, right_image_resize
     try:
       if cameraInfo is None:
@@ -98,12 +100,10 @@ class get_distance_object_from_camera:
       depth_image = self.bridge.imgmsg_to_cv2(depth_data, TYPE_DEPTH_IMAGE)
       cv_rgb = self.bridge.imgmsg_to_cv2(rgb_data, TYPE_COLOR_IMAGE)
 
-      scale_depth_color_width = float(cv_rgb.shape[0])/float(depth_image.shape[0])
-      scale_depth_color_height = float(cv_rgb.shape[1])/float(depth_image.shape[1])
+      scale_depth_color_width = float(cv_rgb.shape[1])/float(depth_image.shape[1])
+      scale_depth_color_height = float(cv_rgb.shape[0])/float(depth_image.shape[0])
       # print("cv_rgb.shape: ", cv_rgb.shape)
       # print("depth_image.shape: ", depth_image.shape)
-      # rospy.loginfo("scale_depth_color_width: %f", scale_depth_color_width)
-      # rospy.loginfo("scale_depth_color_height: %f", scale_depth_color_height)
 
       top_image = 0
       bottom_image = 0
@@ -118,8 +118,6 @@ class get_distance_object_from_camera:
         bottom_image = left_image_resize
         left_image = top_image_resize
         right_image = bottom_image_resize
-        origin_width = depth_image_rotate.shape[1]/2
-        origin_height = depth_image_rotate.shape[0]/2
         template = scale_depth_color_width
         scale_depth_color_width = scale_depth_color_height
         scale_depth_color_height = template
@@ -130,51 +128,66 @@ class get_distance_object_from_camera:
         bottom_image = bottom_image_resize
         left_image = left_image_resize
         right_image = right_image_resize
-        origin_width = depth_image_rotate.shape[0]/2
-        origin_height = depth_image_rotate.shape[1]/2
 
-      # rospy.loginfo("top_image = %d, bottom_image = %d, left_image = %d, right_image = %d", top_image, bottom_image, left_image, right_image)
-      # rospy.loginfo("origin_width = %d, origin_height = %d", origin_width, origin_height)
+      origin_width = depth_image_rotate.shape[1]/2
+      origin_height = depth_image_rotate.shape[0]/2
+      # rospy.loginfo("scale_depth_color_width: %f", scale_depth_color_width)
+      # rospy.loginfo("scale_depth_color_height: %f", scale_depth_color_height)
+
+      top_color_image = int(scale_depth_color_height*top_image)
+      bottom_color_image = int(scale_depth_color_height*bottom_image)
+      left_color_image = int(scale_depth_color_width*left_image)
+      right_color_image = int(scale_depth_color_width*right_image)
+      origin_color_width = int(scale_depth_color_width*origin_width)
+      origin_color_height = int(scale_depth_color_height*origin_height)
+      cv_rgb_rotate_resize = self.resize(cv_rgb_rotate, top_color_image, bottom_color_image, left_color_image, right_color_image, origin_color_width, origin_color_height)
       depth_image_rotate_resize = self.resize(depth_image_rotate, top_image, bottom_image, left_image, right_image, origin_width, origin_height)
-      cv2.circle(cv_rgb_rotate, (cv_rgb_rotate.shape[1]/2, cv_rgb_rotate.shape[0]/2), 3, (0, 255, 255), -1)
-      cv2.setMouseCallback(depth_image_name, self.mouseEvent)
-
-      center_start_x_ = depth_image_rotate.shape[1]/2 - left_image
-      center_start_x = cv_rgb_rotate.shape[1]/2-int(abs(depth_image_rotate.shape[1]/2-center_start_x_)*scale_depth_color_width)
-      center_end_x_ = depth_image_rotate.shape[1]/2 - right_image
-      center_end_x = cv_rgb_rotate.shape[1]/2+int(abs(depth_image_rotate.shape[1]/2-center_end_x_)*scale_depth_color_width)
-      center_start_y_ = depth_image_rotate.shape[0]/2 - top_image
-      center_start_y = cv_rgb_rotate.shape[0]/2-int(abs(depth_image_rotate.shape[0]/2-center_start_y_)*scale_depth_color_height)
-      center_end_y_ = depth_image_rotate.shape[0]/2 - bottom_image
-      center_end_y = cv_rgb_rotate.shape[0]/2+int(abs(depth_image_rotate.shape[0]/2-center_end_y_)*scale_depth_color_height)
-      cv2.rectangle(cv_rgb_rotate, (center_start_x, center_start_y), (center_end_x, center_end_y), (255, 0, 0), 2)
+      # rospy.loginfo("origin_color_width = %d, origin_color_height = %d", origin_color_width, origin_color_height)
+      # rospy.loginfo("origin_width = %d, origin_height = %d", origin_width, origin_height)
+      # rospy.loginfo("top_color_image = %d, bottom_color_image = %d, left_color_image = %d, right_color_image = %d", top_color_image, bottom_color_image, left_color_image, right_color_image)
+      # rospy.loginfo("top_image = %d, bottom_image = %d, left_image = %d, right_image = %d", top_image, bottom_image, left_image, right_image)
+      # rospy.loginfo("cv_rgb_rotate_resize: width = %d, height = %d", cv_rgb_rotate_resize.shape[1], cv_rgb_rotate_resize.shape[0])
+      # rospy.loginfo("depth_image_rotate: width = %d, height = %d", depth_image_rotate.shape[1], depth_image_rotate.shape[0])
+      # rospy.loginfo("depth_image_rotate_resize: width = %d, height = %d", depth_image_rotate_resize.shape[1], depth_image_rotate_resize.shape[0])
+      cv2.setMouseCallback(depth_image_resize_name, self.mouseEvent)
   
       prior_time = time.time()
       detect_point, warning_point, dangerous_point = self.detectObstacle(use_detect, depth_image_rotate_resize, top_image, bottom_image, left_image, right_image)
-      if len(detect_point) != 0:
-        for i in range(0, len(detect_point)):
-          if i%2 == 0:
-            center_x, center_y = self.revertPoint(cv_rgb_rotate, depth_image_rotate, depth_image_rotate_resize, detect_point[i], detect_point[i+1])
-            cv2.circle(cv_rgb_rotate, (center_x, center_y), 3, (0, 255, 0), -1)
-      if len(warning_point) != 0:
-        for i in range(0, len(warning_point)):
-          if i%2 == 0:
-            center_x, center_y = self.revertPoint(cv_rgb_rotate, depth_image_rotate, depth_image_rotate_resize, warning_point[i], warning_point[i+1])
-            cv2.circle(cv_rgb_rotate, (center_x, center_y), 3, (0, 255, 255), -1)
-      if len(dangerous_point) != 0:
-        for i in range(0, len(dangerous_point)):
-          if i%2 == 0:
-            center_x, center_y = self.revertPoint(cv_rgb_rotate, depth_image_rotate, depth_image_rotate_resize, dangerous_point[i], dangerous_point[i+1])
-            cv2.circle(cv_rgb_rotate, (center_x, center_y), 3, (0, 0, 255), -1)
       rospy.loginfo("Time to check: %f", time.time()-prior_time) 
 
-      self.mouseDistance(cv_rgb_rotate, depth_image_rotate, depth_image_rotate_resize, OFFSET, x_mouse, y_mouse)
+      if is_display_origin_color_image:
+        if len(detect_point) != 0:
+          for i in range(0, len(detect_point)):
+            if i%2 == 0:
+              center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, detect_point[i], detect_point[i+1])
+              cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 0), -1)
+        if len(warning_point) != 0:
+          for i in range(0, len(warning_point)):
+            if i%2 == 0:
+              center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, warning_point[i], warning_point[i+1])
+              cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 255), -1)
+        if len(dangerous_point) != 0:
+          for i in range(0, len(dangerous_point)):
+            if i%2 == 0:
+              center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, dangerous_point[i], dangerous_point[i+1])
+              cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 0, 255), -1)
+
+        cv2.circle(cv_rgb_rotate_resize, (cv_rgb_rotate_resize.shape[1]/2, cv_rgb_rotate_resize.shape[0]/2), 3, (0, 0, 0), -1)
+        center_start_x, center_start_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, 0, 0)
+        center_end_x, center_end_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, depth_image_rotate_resize.shape[1], depth_image_rotate_resize.shape[0])
+        cv2.rectangle(cv_rgb_rotate_resize, (center_start_x, center_start_y), (center_end_x, center_end_y), (255, 255, 0), 3)
+
+      # self.mouseDistance(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, OFFSET, x_mouse, y_mouse)
     except CvBridgeError as e:
       print(e)
 
     try:
-      self.showImage(color_image_name, cv_rgb_rotate)
-      self.showImage(depth_image_name, depth_image_rotate_resize)
+      if is_display_origin_color_image:
+        self.showImage(color_image_origin_name, cv_rgb_rotate)
+      if is_display_origin_depth_image:
+        self.showImage(depth_image_origin_name, depth_image_rotate)
+      if is_display_resize_depth_image:
+        self.showImage(depth_image_resize_name, depth_image_rotate_resize)
 
       depth_image_message = self.bridge.cv2_to_imgmsg(depth_image_rotate_resize, TYPE_DEPTH_IMAGE)
       color_image_message = self.bridge.cv2_to_imgmsg(cv_rgb_rotate, TYPE_COLOR_IMAGE)
@@ -227,6 +240,7 @@ class get_distance_object_from_camera:
 
   def showImage(self, window_name, cv_image):
     try:
+      # rospy.loginfo("%s.width: %d , %s.height: %d", window_name, cv_image.shape[1], window_name, cv_image.shape[0])
       cv2.imshow(window_name, cv_image)
       cv2.waitKey(30)
     except:
@@ -242,24 +256,33 @@ class get_distance_object_from_camera:
     except:
       print("Something went wrong when detect mouse event")
 
-  def resize(self, depth_image, top_image, bottom_image, left_image, right_image, origin_x, origin_y):
-    depth_image_resize = depth_image
-    if self.checkSize(depth_image, top_image, bottom_image, left_image, right_image):
+  def resize(self, image, top_image, bottom_image, left_image, right_image, origin_x, origin_y):
+    image_resize = image
+    if (top_image+bottom_image)%2 != 0 or (left_image+right_image)%2 != 0:
+      if top_image%2 != 0:
+        top_image = top_image-1
+      if bottom_image%2 != 0:
+        bottom_image = bottom_image-1
+      if left_image%2 != 0:
+        left_image = left_image-1
+      if right_image%2 != 0:
+        right_image = right_image-1
+    if self.checkSize(image, top_image, bottom_image, left_image, right_image, origin_x, origin_y):
       # rospy.loginfo("top_image = %d, bottom_image = %d, left_image = %d, right_image = %d", top_image, bottom_image, left_image, right_image)
-      depth_image_resize = depth_image[origin_y-top_image:origin_y+bottom_image, origin_x-left_image:origin_x+right_image]
-    return depth_image_resize
+      image_resize = image[origin_y-top_image:origin_y+bottom_image, origin_x-left_image:origin_x+right_image]
+    return image_resize
   
-  def checkSize(self, depth_image, top_image, bottom_image, left_image, right_image):
+  def checkSize(self, image, top_image, bottom_image, left_image, right_image, origin_x, origin_y):
     is_good = True
     if (top_image+bottom_image)%2 != 0 or (left_image+right_image)%2 != 0:
       is_good = False
-      rospy.loginfo("Can not resize image: (top_image_resize + bottom_image_resize) or (left_image_resize + right_image_resize) must be even number")
-    elif left_image > depth_image.shape[1]/2 or right_image > depth_image.shape[1]/2:
+      rospy.logerr("Can not resize image: (top_image_resize + bottom_image_resize) or (left_image_resize + right_image_resize) must be even number")
+    elif left_image > origin_x or right_image > origin_x:
       is_good = False
-      rospy.loginfo("Can not resize image: left_image_resize (%d) or right_image_resize (%d) must be less than %d/2", left_image, right_image, depth_image.shape[1])
-    elif top_image > depth_image.shape[0]/2 or bottom_image > depth_image.shape[0]/2:
+      rospy.logerr("Can not resize image: left_image_resize (%d) or right_image_resize (%d) must be less than %d", left_image, right_image, origin_x)
+    elif top_image > origin_y or bottom_image > origin_y:
       is_good = False
-      rospy.loginfo("Can not resize image: top_image_resize (%d) or bottom_image_resize (%d) must be less than %d/2", top_image, bottom_image, depth_image.shape[0])
+      rospy.logerr("Can not resize image: top_image_resize (%d) or bottom_image_resize (%d) must be less than %d", top_image, bottom_image, origin_y)
     return is_good
 
   def getDistance(self, roi_depth):
@@ -289,7 +312,7 @@ class get_distance_object_from_camera:
         
   def mouseDistance(self, cv_rgb, depth_image, depth_image_resize, offset, x_mouse, y_mouse):
     global scale_depth_color_width, scale_depth_color_height
-    roi_depth = depth_image[y_mouse:y_mouse+offset, x_mouse:x_mouse+offset]
+    roi_depth = depth_image_resize[y_mouse:y_mouse+offset, x_mouse:x_mouse+offset]
     point_x, point_y, point_z, dist = self.getDistance(roi_depth)
     if not dist is None:
       point_x_str = "x: " + str(format(point_x, '.2f')) + "m"
@@ -298,12 +321,13 @@ class get_distance_object_from_camera:
       dist_str    = "d: " + str(format(dist   , '.2f')) + "m"
 
       center_x, center_y = self.revertPoint(cv_rgb, depth_image, depth_image_resize, x_mouse, y_mouse)
-      cv2.circle(cv_rgb, (center_x, center_y), 3, (0, 0, 255), -1)
 
-      cv2.putText(cv_rgb, point_x_str, (center_x+10, center_y-80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
-      cv2.putText(cv_rgb, point_y_str, (center_x+10, center_y-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
-      cv2.putText(cv_rgb, point_z_str, (center_x+10, center_y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
-      cv2.putText(cv_rgb, dist_str, (center_x+10, center_y+10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+      if is_display_origin_color_image:
+        cv2.circle(cv_rgb, (center_x, center_y), 3, (255, 255, 255), -1)
+        cv2.putText(cv_rgb, point_x_str, (center_x+10, center_y-80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+        cv2.putText(cv_rgb, point_y_str, (center_x+10, center_y-50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+        cv2.putText(cv_rgb, point_z_str, (center_x+10, center_y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
+        cv2.putText(cv_rgb, dist_str, (center_x+10, center_y+10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 3, cv2.LINE_AA)
 
   def revertPoint(self, cv_rgb, depth_image, depth_image_resize, x_point, y_point):
     center_x = 0
@@ -331,47 +355,83 @@ class get_distance_object_from_camera:
       # rospy.loginfo("Time to check: %f", time.time()-prior_time) 
       rate.sleep() 
   def detectObstacle(self, use_detect, depth_image, top_image, bottom_image, left_image, right_image):
-    global node_name, distance_field_detect, distance_field_warning, distance_field_dangerous
+    global OFFSET, node_name, distance_field_detect, distance_field_warning, distance_field_dangerous
+    detect_point = []
+    warning_point = []
+    dangerous_point = []
     if use_detect:
-      num_detect = 0
-      num_warning = 0
-      num_dangerous = 0
-      detect_point = []
-      warning_point = []
-      dangerous_point = []
       for i in range(0, left_image+right_image):
         for j in range(0, top_image+bottom_image):
           if i%OFFSET is 0 and j%OFFSET is 0:
             if not depth_image is None:
               roi_depth = depth_image[j:j+OFFSET, i:i+OFFSET]
               point_x_, point_y_, point_z_, dist = self.getDistance(roi_depth)
-              if dist>distance_field_warning and dist<distance_field_detect and point_y_<0.05:
-                num_detect = num_detect+1
-                detect_point.append(i)
-                detect_point.append(j)
-              elif dist>distance_field_dangerous and dist<distance_field_warning and point_y_<0.05:
-                num_warning = num_warning+1
-                warning_point.append(i)
-                warning_point.append(j)
-              elif dist>0.1 and dist<distance_field_dangerous and point_y_<0.05:
-                num_dangerous = num_dangerous+1
-                dangerous_point.append(i)
-                dangerous_point.append(j)
+              if point_y_ is not None:
+                # rospy.loginfo("point_y_: %f", point_y_)
+                if dist>distance_field_warning and dist<distance_field_detect and point_y_<0:
+                  detect_point.append(i)
+                  detect_point.append(j)
+                elif dist>distance_field_dangerous and dist<distance_field_warning and point_y_<0:
+                  warning_point.append(i)
+                  warning_point.append(j)
+                elif dist>0.1 and dist<distance_field_dangerous and point_y_<0:
+                  dangerous_point.append(i)
+                  dangerous_point.append(j)
             else:
               rospy.loginfo("depth_image_rotate_resize is None")
-      # print(num_dangerous, num_warning, num_detect)
-      if num_dangerous>50:
-        detect_point = []
-        num_warning = []
-        rospy.logerr(node_name + " - Dangerous Obstacle: %d", num_dangerous)
-      elif num_warning>30:
-        detect_point = []
-        dangerous_point = []
-        rospy.logwarn(node_name + " - Warning Obstacle: %d", num_warning)
-      elif num_detect>10:
-        num_warning = []
-        dangerous_point = []
-        rospy.loginfo(node_name + " - Detect Obstacle: %d", num_detect)
+      num_dangerous = 0
+      num_warning = 0
+      num_detect  = 0
+      if len(dangerous_point)>100:
+        # rospy.loginfo(node_name + " - len(dangerous_point): %d", len(dangerous_point))
+        for i in range(0,len(dangerous_point)-6, 6):
+          # rospy.loginfo(node_name + "dangerous_point[i+2]-dangerous_point[i  ]-OFFSET: %d", dangerous_point[i+2]-dangerous_point[i]-OFFSET)
+          # rospy.loginfo(node_name + "dangerous_point[i+4]-dangerous_point[i+2]-OFFSET: %d", dangerous_point[i+4]-dangerous_point[i+2]-OFFSET)
+          # rospy.loginfo(node_name + "dangerous_point[i+6]-dangerous_point[i+4]-OFFSET: %d", dangerous_point[i+6]-dangerous_point[i+4]-OFFSET)
+          if dangerous_point[i+2]-dangerous_point[i]-OFFSET < 2 and dangerous_point[i+2]-dangerous_point[i]-OFFSET >= 0:
+            if dangerous_point[i+4]-dangerous_point[i+2]-OFFSET < 2 and dangerous_point[i+4]-dangerous_point[i+2]-OFFSET >= 0:
+              if dangerous_point[i+6]-dangerous_point[i+4]-OFFSET < 2 and dangerous_point[i+6]-dangerous_point[i+4]-OFFSET >= 0:
+                num_dangerous = num_dangerous + 1
+        if num_dangerous>0:
+          rospy.logerr(node_name + " - Dangerous Obstacle: %d", num_dangerous)
+        for i in range(0, len(detect_point)):
+          detect_point.pop(0)
+        for i in range(0, len(warning_point)): 
+          warning_point.pop(0)
+      elif len(warning_point)>50:
+        rospy.loginfo(node_name + " - len(warning_point): %d", len(warning_point))
+        for i in range(0,len(warning_point)-6, 6):
+          if warning_point[i+2]-warning_point[i]-OFFSET < 2 and warning_point[i+2]-warning_point[i]-OFFSET >= 0:
+            if warning_point[i+4]-warning_point[i+2]-OFFSET < 2 and warning_point[i+4]-warning_point[i+2]-OFFSET >= 0:
+              if warning_point[i+6]-warning_point[i+4]-OFFSET < 2 and warning_point[i+6]-warning_point[i+4]-OFFSET >= 0:
+                num_warning = num_warning + 1
+        if num_warning>0:
+          rospy.logwarn(node_name + " - Warning Obstacle: %d", num_warning)
+        for i in range(0, len(detect_point)):
+          detect_point.pop(0)
+        for i in range(0, len(dangerous_point)):
+          dangerous_point.pop(0)
+      elif len(detect_point)>30:
+        rospy.loginfo(node_name + " - len(detect_point): %d", len(detect_point))
+        for i in range(0,len(detect_point)-6, 6):
+          if detect_point[i+2]-detect_point[i]-OFFSET < 2 and detect_point[i+2]-detect_point[i]-OFFSET >= 0:
+            if detect_point[i+4]-detect_point[i+2]-OFFSET < 2 and detect_point[i+4]-detect_point[i+2]-OFFSET >= 0:
+              if detect_point[i+6]-detect_point[i+4]-OFFSET < 2 and detect_point[i+6]-detect_point[i+4]-OFFSET >= 0:
+                num_detect = num_detect + 1
+        if num_detect>0:
+          rospy.loginfo(node_name + " - Detect Obstacle: %d", num_detect)
+        for i in range(0, len(warning_point)):
+          warning_point.pop(0)
+        for i in range(0, len(dangerous_point)):
+          dangerous_point.pop(0)
+      else:
+        rospy.loginfo(node_name + " - ELSE")
+        for i in range(0, len(detect_point)):
+          detect_point.pop(0)
+        for i in range(0, len(warning_point)):
+          warning_point.pop(0)
+        for i in range(0, len(dangerous_point)):
+          dangerous_point.pop(0)
     return detect_point, warning_point, dangerous_point
 
 def main(args):
