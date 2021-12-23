@@ -30,6 +30,7 @@
     + On Stereo Module
     + Deselect "Enable Auto Exposure"
     + Set "Controls/Exposure": 20000 - 25000
+    + Set "Controls/Gain": 40 - 60
 
 - Run depth camera: $roslaunch realsense2_camera rs_camera.launch
 
