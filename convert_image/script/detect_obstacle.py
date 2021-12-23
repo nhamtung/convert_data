@@ -142,33 +142,33 @@ class get_distance_object_from_camera:
       origin_color_height = int(scale_depth_color_height*origin_height)
       cv_rgb_rotate_resize = self.resize(cv_rgb_rotate, top_color_image, bottom_color_image, left_color_image, right_color_image, origin_color_width, origin_color_height)
       depth_image_rotate_resize = self.resize(depth_image_rotate, top_image, bottom_image, left_image, right_image, origin_width, origin_height)
-      # rospy.loginfo("origin_color_width = %d, origin_color_height = %d", origin_color_width, origin_color_height)
-      # rospy.loginfo("origin_width = %d, origin_height = %d", origin_width, origin_height)
-      # rospy.loginfo("top_color_image = %d, bottom_color_image = %d, left_color_image = %d, right_color_image = %d", top_color_image, bottom_color_image, left_color_image, right_color_image)
-      # rospy.loginfo("top_image = %d, bottom_image = %d, left_image = %d, right_image = %d", top_image, bottom_image, left_image, right_image)
-      # rospy.loginfo("cv_rgb_rotate_resize: width = %d, height = %d", cv_rgb_rotate_resize.shape[1], cv_rgb_rotate_resize.shape[0])
-      # rospy.loginfo("depth_image_rotate: width = %d, height = %d", depth_image_rotate.shape[1], depth_image_rotate.shape[0])
-      # rospy.loginfo("depth_image_rotate_resize: width = %d, height = %d", depth_image_rotate_resize.shape[1], depth_image_rotate_resize.shape[0])
       cv2.setMouseCallback(depth_image_resize_name, self.mouseEvent)
   
       prior_time = time.time()
       detect_point, warning_point, dangerous_point = self.detectObstacle(use_detect, depth_image_rotate_resize, top_image, bottom_image, left_image, right_image)
+      detect_point_filter, warning_point_filter, dangerous_point_filter = self.filterObstacle(detect_point, warning_point, dangerous_point)
       rospy.loginfo("Time to check: %f", time.time()-prior_time) 
 
-      if is_display_origin_color_image:
-        if len(detect_point) != 0:
-          for i in range(0, len(detect_point),2):
-            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, detect_point[i], detect_point[i+1])
+      if len(detect_point_filter) > 0:
+        rospy.loginfo(node_name + " - Detect Obstacle: %d", len(detect_point_filter))
+        if is_display_origin_color_image:
+          for i in range(0, len(detect_point_filter),2):
+            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, detect_point_filter[i], detect_point_filter[i+1])
             cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 0), -1)
-        if len(warning_point) != 0:
-          for i in range(0, len(warning_point),2):
-            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, warning_point[i], warning_point[i+1])
+      if len(warning_point_filter) > 0:
+        rospy.logwarn(node_name + " - Warning Obstacle: %d", len(warning_point_filter))
+        if is_display_origin_color_image:
+          for i in range(0, len(warning_point_filter),2):
+            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, warning_point_filter[i], warning_point_filter[i+1])
             cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 255, 255), -1)
-        if len(dangerous_point) != 0:
-          for i in range(0, len(dangerous_point),2):
-            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, dangerous_point[i], dangerous_point[i+1])
+      if len(dangerous_point_filter) > 0:
+        rospy.logerr(node_name + " - Dangerous Obstacle: %d", len(dangerous_point_filter))
+        if is_display_origin_color_image:
+          for i in range(0, len(dangerous_point_filter),2):
+            center_x, center_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, dangerous_point_filter[i], dangerous_point_filter[i+1])
             cv2.circle(cv_rgb_rotate_resize, (center_x, center_y), 3, (0, 0, 255), -1)
 
+      if is_display_origin_color_image:
         cv2.circle(cv_rgb_rotate_resize, (cv_rgb_rotate_resize.shape[1]/2, cv_rgb_rotate_resize.shape[0]/2), 3, (0, 0, 0), -1)
         center_start_x, center_start_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, 0, 0)
         center_end_x, center_end_y = self.revertPoint(cv_rgb_rotate_resize, depth_image_rotate, depth_image_rotate_resize, depth_image_rotate_resize.shape[1], depth_image_rotate_resize.shape[0])
@@ -376,34 +376,28 @@ class get_distance_object_from_camera:
                   dangerous_point.append(j)
             else:
               rospy.loginfo("depth_image_rotate_resize is None")
-      num_dangerous = 0
-      num_warning = 0
-      num_detect  = 0
-      detect_point_final = []
-      warning_point_final = []
-      dangerous_point_final = []
-      if len(dangerous_point)>50:
-        for i in range(0,len(dangerous_point)-12, 2):
-          if dangerous_point[i+2]-dangerous_point[i] == 0 and dangerous_point[i+4]-dangerous_point[i+2] == 0 and dangerous_point[i+6]-dangerous_point[i+4] == 0 and dangerous_point[i+8]-dangerous_point[i+6] == 0 and dangerous_point[i+10]-dangerous_point[i+8] == 0 and dangerous_point[i+12]-dangerous_point[i+10] == 0:
-            dangerous_point_final.append(dangerous_point[i])
-            dangerous_point_final.append(dangerous_point[i+1])
-        if len(dangerous_point_final)>0:
-          rospy.logerr(node_name + " - Dangerous Obstacle: %d", len(dangerous_point_final))
-      if len(warning_point)>50 and len(dangerous_point_final)==0:
-        for i in range(0,len(warning_point)-12, 2):
-          if warning_point[i+2]-warning_point[i] == 0 and warning_point[i+4]-warning_point[i+2] == 0 and warning_point[i+6]-warning_point[i+4] == 0 and warning_point[i+8]-warning_point[i+6] == 0 and warning_point[i+10]-warning_point[i+8] == 0 and warning_point[i+12]-warning_point[i+10] == 0:
-            warning_point_final.append(warning_point[i])
-            warning_point_final.append(warning_point[i+1])
-        if len(warning_point_final)>0:
-          rospy.logwarn(node_name + " - Warning Obstacle: %d", len(warning_point_final))
-      if len(detect_point)>30 and len(dangerous_point_final)==0 and len(warning_point_final)==0:
-        for i in range(0,len(detect_point)-12, 2):
-          if detect_point[i+2]-detect_point[i] == 0 and detect_point[i+4]-detect_point[i+2] == 0 and detect_point[i+6]-detect_point[i+4] == 0 and detect_point[i+8]-detect_point[i+6] == 0 and detect_point[i+10]-detect_point[i+8] == 0 and detect_point[i+12]-detect_point[i+10] == 0:
-            detect_point_final.append(detect_point[i])
-            detect_point_final.append(detect_point[i+1])
-        if len(detect_point_final)>0:
-          rospy.loginfo(node_name + " - Detect Obstacle: %d", len(detect_point_final))
-    return detect_point_final, warning_point_final, dangerous_point_final
+    return detect_point, warning_point, dangerous_point
+
+  def filterObstacle(self, detect_point, warning_point, dangerous_point):
+    detect_point_filter = []
+    warning_point_filter = []
+    dangerous_point_filter = []
+    if len(dangerous_point)>50:
+      for i in range(0,len(dangerous_point)-12, 2):
+        if dangerous_point[i+2]-dangerous_point[i] == 0 and dangerous_point[i+4]-dangerous_point[i+2] == 0 and dangerous_point[i+6]-dangerous_point[i+4] == 0 and dangerous_point[i+8]-dangerous_point[i+6] == 0 and dangerous_point[i+10]-dangerous_point[i+8] == 0 and dangerous_point[i+12]-dangerous_point[i+10] == 0:
+          dangerous_point_filter.append(dangerous_point[i])
+          dangerous_point_filter.append(dangerous_point[i+1])
+    if len(warning_point)>50 and len(dangerous_point_filter)==0:
+      for i in range(0,len(warning_point)-12, 2):
+        if warning_point[i+2]-warning_point[i] == 0 and warning_point[i+4]-warning_point[i+2] == 0 and warning_point[i+6]-warning_point[i+4] == 0 and warning_point[i+8]-warning_point[i+6] == 0 and warning_point[i+10]-warning_point[i+8] == 0 and warning_point[i+12]-warning_point[i+10] == 0:
+          warning_point_filter.append(warning_point[i])
+          warning_point_filter.append(warning_point[i+1])
+    if len(detect_point)>30 and len(dangerous_point_filter)==0 and len(warning_point_filter)==0:
+      for i in range(0,len(detect_point)-12, 2):
+        if detect_point[i+2]-detect_point[i] == 0 and detect_point[i+4]-detect_point[i+2] == 0 and detect_point[i+6]-detect_point[i+4] == 0 and detect_point[i+8]-detect_point[i+6] == 0 and detect_point[i+10]-detect_point[i+8] == 0 and detect_point[i+12]-detect_point[i+10] == 0:
+          detect_point_filter.append(detect_point[i])
+          detect_point_filter.append(detect_point[i+1])
+    return detect_point_filter, warning_point_filter, dangerous_point_filter
 
 def main(args):
   rospy.init_node('detect_object', anonymous=True)
