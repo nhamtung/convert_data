@@ -379,66 +379,31 @@ class get_distance_object_from_camera:
       num_dangerous = 0
       num_warning = 0
       num_detect  = 0
+      detect_point_final = []
+      warning_point_final = []
+      dangerous_point_final = []
       if len(dangerous_point)>50:
         for i in range(0,len(dangerous_point)-12, 2):
-          # rospy.loginfo(node_name + "dangerous_point[i+2]-dangerous_point[i  ]-OFFSET: %d", dangerous_point[i+2]-dangerous_point[i]-OFFSET)
-          # rospy.loginfo(node_name + "dangerous_point[i+4]-dangerous_point[i+2]-OFFSET: %d", dangerous_point[i+4]-dangerous_point[i+2]-OFFSET)
-          # rospy.loginfo(node_name + "dangerous_point[i+6]-dangerous_point[i+4]-OFFSET: %d", dangerous_point[i+6]-dangerous_point[i+4]-OFFSET)
-          # rospy.loginfo(node_name + "dangerous_point[i+8]-dangerous_point[i+6]-OFFSET: %d", dangerous_point[i+8]-dangerous_point[i+6]-OFFSET)
-          # rospy.loginfo(node_name + "dangerous_point[i+10]-dangerous_point[i+8]-OFFSET: %d", dangerous_point[i+10]-dangerous_point[i+8]-OFFSET)
-          if dangerous_point[i+2]-dangerous_point[i] == 0:
-            if dangerous_point[i+4]-dangerous_point[i+2] == 0:
-              if dangerous_point[i+6]-dangerous_point[i+4] == 0:
-                if dangerous_point[i+8]-dangerous_point[i+6] == 0:
-                  if dangerous_point[i+10]-dangerous_point[i+8] == 0:
-                    if dangerous_point[i+12]-dangerous_point[i+10] == 0:
-                        num_dangerous = num_dangerous + 1
-        if num_dangerous>0:
-          rospy.logerr(node_name + " - Dangerous Obstacle: %d", num_dangerous)
-        for i in range(0, len(detect_point)):
-          detect_point.pop(0)
-        for i in range(0, len(warning_point)): 
-          warning_point.pop(0)
-      elif len(warning_point)>50:
-        rospy.loginfo(node_name + " - len(warning_point): %d", len(warning_point))
+          if dangerous_point[i+2]-dangerous_point[i] == 0 and dangerous_point[i+4]-dangerous_point[i+2] == 0 and dangerous_point[i+6]-dangerous_point[i+4] == 0 and dangerous_point[i+8]-dangerous_point[i+6] == 0 and dangerous_point[i+10]-dangerous_point[i+8] == 0 and dangerous_point[i+12]-dangerous_point[i+10] == 0:
+            dangerous_point_final.append(dangerous_point[i])
+            dangerous_point_final.append(dangerous_point[i+1])
+        if len(dangerous_point_final)>0:
+          rospy.logerr(node_name + " - Dangerous Obstacle: %d", len(dangerous_point_final))
+      if len(warning_point)>50 and len(dangerous_point_final)==0:
         for i in range(0,len(warning_point)-12, 2):
-          if warning_point[i+2]-warning_point[i] == 0:
-            if warning_point[i+4]-warning_point[i+2] == 0:
-              if warning_point[i+6]-warning_point[i+4] == 0:
-                if warning_point[i+8]-warning_point[i+6] == 0:
-                  if warning_point[i+10]-warning_point[i+8] == 0:
-                    if warning_point[i+12]-warning_point[i+10] == 0:
-                        num_warning = num_warning + 1
-        if num_warning>0:
-          rospy.logwarn(node_name + " - Warning Obstacle: %d", num_warning)
-        for i in range(0, len(detect_point)):
-          detect_point.pop(0)
-        for i in range(0, len(dangerous_point)):
-          dangerous_point.pop(0)
-      elif len(detect_point)>30:
-        rospy.loginfo(node_name + " - len(detect_point): %d", len(detect_point))
+          if warning_point[i+2]-warning_point[i] == 0 and warning_point[i+4]-warning_point[i+2] == 0 and warning_point[i+6]-warning_point[i+4] == 0 and warning_point[i+8]-warning_point[i+6] == 0 and warning_point[i+10]-warning_point[i+8] == 0 and warning_point[i+12]-warning_point[i+10] == 0:
+            warning_point_final.append(warning_point[i])
+            warning_point_final.append(warning_point[i+1])
+        if len(warning_point_final)>0:
+          rospy.logwarn(node_name + " - Warning Obstacle: %d", len(warning_point_final))
+      if len(detect_point)>30 and len(dangerous_point_final)==0 and len(warning_point_final)==0:
         for i in range(0,len(detect_point)-12, 2):
-          if detect_point[i+2]-detect_point[i] == 0:
-            if detect_point[i+4]-detect_point[i+2] == 0:
-              if detect_point[i+6]-detect_point[i+4] == 0:
-                if detect_point[i+8]-detect_point[i+6] == 0:
-                  if detect_point[i+10]-detect_point[i+8] == 0:
-                    if detect_point[i+12]-detect_point[i+10] == 0:
-                        num_detect = num_detect + 1
-        if num_detect>0:
-          rospy.loginfo(node_name + " - Detect Obstacle: %d", num_detect)
-        for i in range(0, len(warning_point)):
-          warning_point.pop(0)
-        for i in range(0, len(dangerous_point)):
-          dangerous_point.pop(0)
-      else:
-        for i in range(0, len(detect_point)):
-          detect_point.pop(0)
-        for i in range(0, len(warning_point)):
-          warning_point.pop(0)
-        for i in range(0, len(dangerous_point)):
-          dangerous_point.pop(0)
-    return detect_point, warning_point, dangerous_point
+          if detect_point[i+2]-detect_point[i] == 0 and detect_point[i+4]-detect_point[i+2] == 0 and detect_point[i+6]-detect_point[i+4] == 0 and detect_point[i+8]-detect_point[i+6] == 0 and detect_point[i+10]-detect_point[i+8] == 0 and detect_point[i+12]-detect_point[i+10] == 0:
+            detect_point_final.append(detect_point[i])
+            detect_point_final.append(detect_point[i+1])
+        if len(detect_point_final)>0:
+          rospy.loginfo(node_name + " - Detect Obstacle: %d", len(detect_point_final))
+    return detect_point_final, warning_point_final, dangerous_point_final
 
 def main(args):
   rospy.init_node('detect_object', anonymous=True)
