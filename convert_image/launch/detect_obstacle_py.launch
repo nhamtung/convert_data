@@ -24,10 +24,14 @@
     <include file="$(find realsense2_camera)/launch/rs_camera.launch">
         <arg name="camera"             value="$(arg camera_left)"/>
         <arg name="usb_port_id"        value="$(arg usb_port_id_left)"/>
+        <arg name="infra_fps"          value="30"/>
+        <arg name="enable_pointcloud"  value="true"/>
     </include>
     <include file="$(find realsense2_camera)/launch/rs_camera.launch">
         <arg name="camera"              value="$(arg camera_right)"/>
         <arg name="usb_port_id"         value="$(arg usb_port_id_right)"/>
+        <arg name="infra_fps"           value="30"/>
+        <arg name="enable_pointcloud"   value="true"/>
     </include>
 
     <node name="detect_obstacle" pkg="convert_image" type="detect_obstacle.py" output="screen" ns="$(arg camera_left)">

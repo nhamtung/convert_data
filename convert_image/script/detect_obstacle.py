@@ -75,7 +75,7 @@ class get_distance_object_from_camera:
     self.depth_sub = message_filters.Subscriber(camera + topic_depth_image_sub , Image)
     rospy.loginfo("Subscriber the topic: " + camera + topic_depth_image_sub)
         
-    self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub, self.camera_info_sub], queue_size=10, slop=0.5)
+    self.ts = message_filters.ApproximateTimeSynchronizer([self.image_sub, self.depth_sub, self.camera_info_sub], queue_size=1, slop=0.05)
     self.ts.registerCallback(self.cameraCallback)
 
     rospack = rospkg.RosPack()
